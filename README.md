@@ -1,6 +1,6 @@
 # Reta_T
 
-Plataforma para la organización y gestión de torneos deportivos locales: administración de ligas, equipos y miembros, y registro en tiempo real —incluso sin conexión— de los eventos de cada partido para llevar estadísticas y resultados actualizados.
+Plataforma para la organización y gestión de torneos deportivos locales: administración de ligas, equipos y miembros, y registro en tiempo real incluso sin conexión de los eventos de cada partido para llevar estadísticas y resultados actualizados.
 
 ## Estado del proyecto
 
