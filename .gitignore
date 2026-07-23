@@ -1,0 +1,29 @@
+# Secretos — nunca commitear (AGENTS.md §8)
+.env
+.env.*
+!.env.example
+
+# Node / Next.js / Vite
+node_modules/
+.next/
+dist/
+build/
+.turbo/
+*.log
+
+# Python / FastAPI
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+
+# Antigravity — artefactos de sesión de trabajo (no compartidos)
+implementation_plan.md
+walkthrough.md

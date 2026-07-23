@@ -1,0 +1,13 @@
+# Reemplazar @usuario1 @usuario2 etc. por los usernames reales de GitHub del equipo.
+# Esto hace que GitHub pida automáticamente revisión de la persona correcta según la carpeta tocada.
+
+# Por defecto, cualquiera del equipo puede revisar
+*                          @usuario1 @usuario2 @usuario3 @usuario4
+
+# Cambios compartidos entre ambos frontends — requieren más ojos (AGENTS.md §9)
+/packages/                @usuario1 @usuario2 @usuario3 @usuario4
+
+# Reglas del agente y arquitectura — cambios de equipo, no de una sola persona
+/AGENTS.md                @usuario1 @usuario2 @usuario3 @usuario4
+/GEMINI.md                @usuario1 @usuario2 @usuario3 @usuario4
+/.agent/                  @usuario1 @usuario2 @usuario3 @usuario4
