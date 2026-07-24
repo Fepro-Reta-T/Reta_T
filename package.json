@@ -1,0 +1,9 @@
+{
+  "name": "reta-t",
+  "private": true,
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "dev:web": "pnpm --filter web-next dev",
+    "dev:pwa": "pnpm --filter registro-pwa dev"
+  }
+}
