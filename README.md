@@ -1,6 +1,6 @@
 # Reta_T — Plataforma de Gestión Deportiva Amateur
 
-**Reta_T** no es solo un gestor de torneos; es la fuente de inteligencia deportiva de una comunidad amateur. Este repositorio está organizado como un monorepo que gestiona el portal de administración, la aplicación de registro en tiempo real (PWA) y el backend centralizado de lógica de negocio.
+**Reta_T** no es solo un gestor de torneos; es la fuente de inteligencia deportiva de una comunidad amateur. Este repositorio está organizado como un monorepo que gestiona el portal de administración, la aplicación de registro en tiempo real (PWA) 
 
 ---
 
