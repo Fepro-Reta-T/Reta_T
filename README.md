@@ -10,7 +10,7 @@ El repositorio sigue una arquitectura de monorepo gestionado por `pnpm` y conten
 
 ```
 reta-t/
-├── apps/                  # Aplicaciones Frontend (Fases Futuras)
+├── apps/                  # Aplicaciones Frontend (Scaffolds iniciales creados)
 │   ├── web-next/          # Portal principal (Next.js) - Administradores, ligas, estadísticas
 │   └── registro-pwa/      # Captura de eventos en cancha (Vite PWA, offline-first)
 ├── packages/              # Paquetes compartidos (Fases Futuras)
@@ -38,7 +38,7 @@ reta-t/
 
 ## 2. Tecnologías y Estado de Implementación
 
-Actualmente el proyecto se encuentra en la **Fase 1 (Fundación)** del roadmap:
+Actualmente el proyecto se encuentra en la transición de la **Fase 1 (Fundación)** a la integración de aplicaciones:
 
 ### Backend (FastAPI)
 * **Python 3.12-slim** y **FastAPI**: Lógica y endpoints REST.
@@ -48,9 +48,20 @@ Actualmente el proyecto se encuentra en la **Fase 1 (Fundación)** del roadmap:
   * `/health`: Validación rápida del estado de la API.
   * `/health/db`: Validación de conectividad y estado de la base de datos (PostgreSQL).
 
+### Frontend (Scaffolds Iniciales)
+* **Web App (Next.js)** en [apps/web-next](file:///c:/Users/Nestor/Documents/Proyecto/Reta_T/apps/web-next):
+  * **Next.js 16.2** (React 19) estructurado bajo App Router.
+  * **Tailwind CSS v4** para estilos rápidos.
+  * TypeScript y ESLint preconfigurados.
+* **Registro PWA (Vite)** en [apps/registro-pwa](file:///c:/Users/Nestor/Documents/Proyecto/Reta_T/apps/registro-pwa):
+  * **Vite** con **React 19** y TypeScript.
+  * Soporte offline-first mediante **vite-plugin-pwa**.
+  * **Tailwind CSS v4** y Oxlint configurados.
+
 ### Infraestructura y Monorepo
 * **Docker Compose**: Levanta de forma local e independiente la base de datos y el contenedor de la API FastAPI.
-* **pnpm Workspaces**: Configuración del monorepo para las aplicaciones cliente.
+* **pnpm Workspaces**: Configuración del monorepo para la orquestación y enlace de dependencias en `apps/*` y `packages/*`.
+* **Scripts Centralizados**: Scripts de inicio en la raíz de `package.json` para facilitar el desarrollo local de ambos frontends.
 
 ---
 
