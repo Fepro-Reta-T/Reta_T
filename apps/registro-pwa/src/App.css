@@ -1,0 +1,49 @@
+.screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: #0f172a;
+  color: #f8fafc;
+  text-align: center;
+}
+
+.screen h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 1.125rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.status {
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.status-online {
+  background: #052e16;
+  color: #4ade80;
+  border: 2px solid #16a34a;
+}
+
+.status-offline {
+  background: #451a03;
+  color: #fbbf24;
+  border: 2px solid #d97706;
+}
+
+.placeholder {
+  color: #64748b;
+  font-size: 1rem;
+  max-width: 24rem;
+}

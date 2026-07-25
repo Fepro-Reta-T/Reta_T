@@ -1,3 +1,9 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# Dependencias con scripts de instalación (postinstall) que confiamos en ejecutar.
+# pnpm los bloquea por defecto por seguridad; estos son estándar de Next.js.
+onlyBuiltDependencies:
+  - sharp
+  - unrs-resolver
