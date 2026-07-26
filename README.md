@@ -43,10 +43,16 @@ Actualmente el proyecto se encuentra en la transición de la **Fase 1 (Fundació
 ### Backend (FastAPI)
 * **Python 3.12-slim** y **FastAPI**: Lógica y endpoints REST.
 * **SQLAlchemy 2.0** y **asyncpg**: ORM y driver asíncrono para PostgreSQL.
+* **Alembic**: Manejo de migraciones de la base de datos.
 * **PostgreSQL 16**: Base de datos relacional con soporte JSONB para el motor genérico de eventos deportivos (`Sport -> EventType -> MatchEvent`).
 * **Endpoints implementados**:
-  * `/health`: Validación rápida del estado de la API.
-  * `/health/db`: Validación de conectividad y estado de la base de datos (PostgreSQL).
+  * **Salud**:
+    * `/health`: Validación rápida del estado de la API.
+    * `/health/db`: Validación de conectividad y estado de la base de datos (PostgreSQL).
+  * **Autenticación y Usuarios (`/auth`)**:
+    * `/auth/register` (POST): Registro de nuevos usuarios.
+    * `/auth/login` (POST): Inicio de sesión y obtención de token JWT.
+    * `/auth/me` (GET): Obtener información del usuario autenticado actual.
 
 ### Frontend (Scaffolds Iniciales)
 * **Web App (Next.js)** en [apps/web-next](file:///c:/Users/Nestor/Documents/Proyecto/Reta_T/apps/web-next):
@@ -62,6 +68,7 @@ Actualmente el proyecto se encuentra en la transición de la **Fase 1 (Fundació
 * **Docker Compose**: Levanta de forma local e independiente la base de datos y el contenedor de la API FastAPI.
 * **pnpm Workspaces**: Configuración del monorepo para la orquestación y enlace de dependencias en `apps/*` y `packages/*`.
 * **Scripts Centralizados**: Scripts de inicio en la raíz de `package.json` para facilitar el desarrollo local de ambos frontends.
+* **CI/CD (GitHub Actions)**: Configuración en `.github/workflows/backend-tests.yml` para correr automáticamente las pruebas del backend (`pytest`) en cada commit o pull request.
 
 ---
 
