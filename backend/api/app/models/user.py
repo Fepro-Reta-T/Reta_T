@@ -1,0 +1,44 @@
+import enum
+import uuid
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, Enum as SAEnum, String, Uuid, func
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.core.database import Base
+
+
+class RoleEnum(str, enum.Enum):
+    """
+    Roles del sistema. Definidos una sola vez acá (AGENTS.md §4) — el equivalente en
+    TypeScript vive en packages/types y debe mantenerse idéntico a este.
+    """
+
+    ADMIN = "admin"
+    ORGANIZER = "organizer"
+    PLAYER = "player"
+    SPECTATOR = "spectator"
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[RoleEnum] = mapped_column(
+        SAEnum(
+            RoleEnum,
+            name="role_enum",
+            native_enum=True,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=False,
+        default=RoleEnum.PLAYER,
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
