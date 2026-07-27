@@ -60,3 +60,31 @@ def test_login_wrong_password_returns_401(client):
 def test_me_without_token_returns_401(client):
     r = client.get("/auth/me")
     assert r.status_code == 401
+
+
+def test_register_with_new_roles_succeeds(client):
+    for role in ["match_manager", "viewer"]:
+        r = client.post(
+            "/auth/register",
+            json={
+                "email": f"{role}@example.com",
+                "password": "password123",
+                "full_name": f"Usuario {role}",
+                "role": role,
+            },
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["role"] == role
+
+
+def test_register_with_old_spectator_role_rejected(client):
+    r = client.post(
+        "/auth/register",
+        json={
+            "email": "viejo@example.com",
+            "password": "password123",
+            "full_name": "Rol viejo",
+            "role": "spectator",
+        },
+    )
+    assert r.status_code == 422

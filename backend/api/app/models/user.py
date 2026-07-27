@@ -12,12 +12,15 @@ class RoleEnum(str, enum.Enum):
     """
     Roles del sistema. Definidos una sola vez acá (AGENTS.md §4) — el equivalente en
     TypeScript vive en packages/types y debe mantenerse idéntico a este.
+
+    Fusión de la decisión inicial + MVP_RetaT.pdf (ver AGENTS.md §4 para el detalle de permisos).
     """
 
     ADMIN = "admin"
     ORGANIZER = "organizer"
+    MATCH_MANAGER = "match_manager"  # "Encargado de partido" en el PDF
     PLAYER = "player"
-    SPECTATOR = "spectator"
+    VIEWER = "viewer"  # "Visualizador (municipio)" en el PDF
 
 
 class User(Base):
