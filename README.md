@@ -1,6 +1,6 @@
 # Reta_T — Plataforma de Gestión Deportiva Amateur
 
-**Reta_T** no es solo un gestor de torneos; es la fuente de inteligencia deportiva de una comunidad amateur. Este repositorio está organizado como un monorepo que gestiona el portal de administración, la aplicación de registro en tiempo real (PWA) 
+**Reta_T** no es solo un gestor de torneos; es la fuente de inteligencia deportiva de una comunidad amateur. Este repositorio está organizado como un monorepo que gestiona el portal de administración, la aplicación de registro en tiempo real (PWA) y el conjunto de utilidades compartidas.
 
 ---
 
@@ -10,13 +10,13 @@ El repositorio sigue una arquitectura de monorepo gestionado por `pnpm` y conten
 
 ```
 reta-t/
-├── apps/                  # Aplicaciones Frontend (Scaffolds iniciales creados)
+├── apps/                  # Aplicaciones de Frontend
 │   ├── web-next/          # Portal principal (Next.js) - Administradores, ligas, estadísticas
 │   └── registro-pwa/      # Captura de eventos en cancha (Vite PWA, offline-first)
-├── packages/              # Paquetes compartidos (Fases Futuras)
-│   ├── ui/                # Componentes de diseño compartidos
-│   ├── types/             # Tipos y esquemas de datos TypeScript compartidos
-│   └── api-client/        # Cliente HTTP unificado para consumir el backend
+├── packages/              # Paquetes compartidos (¡Implementados!)
+│   ├── types/             # Tipos y esquemas de datos TypeScript compartidos (@reta-t/types)
+│   ├── api-client/        # Cliente HTTP unificado para consumir el backend (@reta-t/api-client)
+│   └── ui/                # Componentes de diseño compartidos (@reta-t/ui)
 ├── backend/               # Backend en Python
 │   └── api/               # API REST con FastAPI, SQLAlchemy y Alembic
 │       ├── app/
@@ -38,12 +38,12 @@ reta-t/
 
 ## 2. Tecnologías y Estado de Implementación
 
-Actualmente el proyecto se encuentra en la transición de la **Fase 1 (Fundación)** a la integración de aplicaciones:
+El proyecto ha completado de forma exitosa la **Fase 1 (Fundación)** y la integración inicial del monorepo:
 
 ### Backend (FastAPI)
 * **Python 3.12-slim** y **FastAPI**: Lógica y endpoints REST.
 * **SQLAlchemy 2.0** y **asyncpg**: ORM y driver asíncrono para PostgreSQL.
-* **Alembic**: Manejo de migraciones de la base de datos.
+* **Alembic**: Manejo de migraciones de la base de datos (migraciones iniciales y de roles ya aplicadas).
 * **PostgreSQL 16**: Base de datos relacional con soporte JSONB para el motor genérico de eventos deportivos (`Sport -> EventType -> MatchEvent`).
 * **Endpoints implementados**:
   * **Salud**:
@@ -54,15 +54,20 @@ Actualmente el proyecto se encuentra en la transición de la **Fase 1 (Fundació
     * `/auth/login` (POST): Inicio de sesión y obtención de token JWT.
     * `/auth/me` (GET): Obtener información del usuario autenticado actual.
 
-### Frontend (Scaffolds Iniciales)
+### Paquetes Compartidos (Monorepo)
+* **`@reta-t/types`**: Define en TypeScript el modelo de roles (`Role` enum de 5 elementos) e interfaces de usuario/login equivalentes al backend.
+* **`@reta-t/api-client`**: Proveedor de servicios HTTP usando la Fetch API nativa, con soporte para autorización JWT y mapeo de endpoints `/auth/*`.
+* **`@reta-t/ui`**: Componentes de interfaz comunes. Incluye el componente flexible `Button` preparado para soportar los requerimientos de la PWA móvil offline (botones grandes `xl` de alto contraste) y la densidad de información de la Web.
+
+### Frontend (Scaffolds y Conectividad)
 * **Web App (Next.js)** en [apps/web-next](file:///c:/Users/Nestor/Documents/Proyecto/Reta_T/apps/web-next):
   * **Next.js 16.2** (React 19) estructurado bajo App Router.
   * **Tailwind CSS v4** para estilos rápidos.
-  * TypeScript y ESLint preconfigurados.
+  * Vinculado con dependencias de workspace locales (`@reta-t/*`).
 * **Registro PWA (Vite)** en [apps/registro-pwa](file:///c:/Users/Nestor/Documents/Proyecto/Reta_T/apps/registro-pwa):
   * **Vite** con **React 19** y TypeScript.
   * Soporte offline-first mediante **vite-plugin-pwa**.
-  * **Tailwind CSS v4** y Oxlint configurados.
+  * Vinculado con dependencias de workspace locales (`@reta-t/*`).
 
 ### Infraestructura y Monorepo
 * **Docker Compose**: Levanta de forma local e independiente la base de datos y el contenedor de la API FastAPI.
@@ -104,12 +109,20 @@ Puedes validar que todo funciona correctamente accediendo a:
 * Validación de DB: [http://localhost:8000/health/db](http://localhost:8000/health/db)
 * Documentación interactiva de la API (Swagger UI): [http://localhost:8000/docs](http://localhost:8000/docs)
 
-### Paso 3: Instalar dependencias del Monorepo y levantar Frontends
+### Paso 3: Instalar dependencias y Construir Paquetes Compartidos
 Para instalar dependencias de Node.js en todo el monorepo ejecuta:
 ```bash
 pnpm install
 ```
-Una vez implementadas las aplicaciones, podrás iniciarlas con los siguientes comandos en la raíz:
+
+Antes de ejecutar las aplicaciones frontend, debes compilar los paquetes TypeScript compartidos:
+```bash
+# Compilar todos los paquetes compartidos
+pnpm --filter "@reta-t/*" build
+```
+
+### Paso 4: Levantar Frontends
+Una vez compilados los paquetes compartidos, podrás iniciar los servidores de desarrollo con los siguientes comandos en la raíz:
 * **Next.js Web App**: `pnpm dev:web` (correrá en `http://localhost:3000`)
 * **Registro PWA**: `pnpm dev:pwa` (correrá en `http://localhost:5173`)
 
