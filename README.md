@@ -1,6 +1,6 @@
 # Reta_T — Plataforma de Gestión Deportiva Amateur
 
-**Reta_T** no es solo un gestor de torneos; es la fuente de inteligencia deportiva de una comunidad amateur. Este repositorio está organizado como un monorepo que gestiona el portal de administración, la aplicación de registro en tiempo real (PWA) 
+**Reta_T** es la fuente de inteligencia deportiva de una comunidad amateur — pensada para la reta de calle y el torneo local de barrio. Este repositorio está organizado como un monorepo que gestiona el portal de administración, la aplicación de registro en tiempo real (PWA) y los paquetes compartidos entre ambas apps.
 
 ---
 
@@ -10,13 +10,13 @@ El repositorio sigue una arquitectura de monorepo gestionado por `pnpm` y conten
 
 ```
 reta-t/
-├── apps/                  # Aplicaciones Frontend (Scaffolds iniciales creados)
+├── apps/                  # Aplicaciones Frontend
 │   ├── web-next/          # Portal principal (Next.js) - Administradores, ligas, estadísticas
 │   └── registro-pwa/      # Captura de eventos en cancha (Vite PWA, offline-first)
-├── packages/              # Paquetes compartidos (Fases Futuras)
-│   ├── ui/                # Componentes de diseño compartidos
-│   ├── types/             # Tipos y esquemas de datos TypeScript compartidos
-│   └── api-client/        # Cliente HTTP unificado para consumir el backend
+├── packages/              # Paquetes compartidos (implementados)
+│   ├── types/             # @reta-t/types — Role enum, User, AuthToken, payloads
+│   ├── api-client/        # @reta-t/api-client — Cliente HTTP tipado con JWT
+│   └── ui/                # @reta-t/ui — Componentes React compartidos (Button)
 ├── backend/               # Backend en Python
 │   └── api/               # API REST con FastAPI, SQLAlchemy y Alembic
 │       ├── app/
@@ -38,31 +38,43 @@ reta-t/
 
 ## 2. Tecnologías y Estado de Implementación
 
-Actualmente el proyecto se encuentra en la transición de la **Fase 1 (Fundación)** a la integración de aplicaciones:
+La **Fase 1 (Fundación)** está **completada**. El backend, la autenticación, los paquetes compartidos y los scaffolds de frontend están listos. La siguiente fase es **Ligas**.
 
 ### Backend (FastAPI)
 * **Python 3.12-slim** y **FastAPI**: Lógica y endpoints REST.
 * **SQLAlchemy 2.0** y **asyncpg**: ORM y driver asíncrono para PostgreSQL.
-* **Alembic**: Manejo de migraciones de la base de datos.
+* **Alembic**: Manejo de migraciones de la base de datos (2 migraciones aplicadas: tabla `users` + actualización de roles).
 * **PostgreSQL 16**: Base de datos relacional con soporte JSONB para el motor genérico de eventos deportivos (`Sport -> EventType -> MatchEvent`).
+* **Seguridad**: Contraseñas hasheadas con bcrypt, tokens JWT con PyJWT, validación de entrada con Pydantic.
+* **5 Roles del sistema**: `admin`, `organizer`, `match_manager`, `player`, `viewer`.
 * **Endpoints implementados**:
   * **Salud**:
-    * `/health`: Validación rápida del estado de la API.
-    * `/health/db`: Validación de conectividad y estado de la base de datos (PostgreSQL).
+    * `GET /health`: Validación rápida del estado de la API.
+    * `GET /health/db`: Validación de conectividad con PostgreSQL.
   * **Autenticación y Usuarios (`/auth`)**:
-    * `/auth/register` (POST): Registro de nuevos usuarios.
-    * `/auth/login` (POST): Inicio de sesión y obtención de token JWT.
-    * `/auth/me` (GET): Obtener información del usuario autenticado actual.
+    * `POST /auth/register`: Registro de nuevos usuarios (valida email duplicado → 409).
+    * `POST /auth/login`: Inicio de sesión y obtención de token JWT (valida usuario inactivo → 403).
+    * `GET /auth/me`: Obtener información del usuario autenticado actual.
+* **Tests**: 5 tests de integración con pytest (flujo completo, duplicados, contraseña incorrecta, sin token, roles).
 
-### Frontend (Scaffolds Iniciales)
-* **Web App (Next.js)** en [apps/web-next](file:///c:/Users/Nestor/Documents/Proyecto/Reta_T/apps/web-next):
+### Paquetes Compartidos (`packages/`)
+Evitan duplicación de código entre `web-next` y `registro-pwa`. Ambas apps los consumen vía `workspace:*`.
+
+* **`@reta-t/types`**: Fuente de verdad TypeScript — `Role` enum (espejo exacto del backend Python), interfaces `User`, `RegisterPayload`, `LoginPayload`, `AuthToken`.
+* **`@reta-t/api-client`**: Cliente HTTP tipado con soporte JWT. Funciones `register()`, `login()`, `me()`. Usa Fetch API nativa (sin dependencias externas). La URL base se configura por parámetro para soportar distintos entornos.
+* **`@reta-t/ui`**: Componentes React compartidos. Incluye `Button` con variantes (`primary`, `secondary`, `danger`, `ghost`) y tamaños (`sm`, `md`, `lg`, `xl` para uso en cancha). Sin CSS embebido — cada app aplica sus propios estilos.
+
+### Frontend (Scaffolds conectados)
+* **Web App (Next.js)** en `apps/web-next`:
   * **Next.js 16.2** (React 19) estructurado bajo App Router.
   * **Tailwind CSS v4** para estilos rápidos.
   * TypeScript y ESLint preconfigurados.
-* **Registro PWA (Vite)** en [apps/registro-pwa](file:///c:/Users/Nestor/Documents/Proyecto/Reta_T/apps/registro-pwa):
+  * Dependencias: `@reta-t/types`, `@reta-t/api-client`, `@reta-t/ui`.
+* **Registro PWA (Vite)** en `apps/registro-pwa`:
   * **Vite** con **React 19** y TypeScript.
   * Soporte offline-first mediante **vite-plugin-pwa**.
-  * **Tailwind CSS v4** y Oxlint configurados.
+  * Oxlint configurado.
+  * Dependencias: `@reta-t/types`, `@reta-t/api-client`, `@reta-t/ui`.
 
 ### Infraestructura y Monorepo
 * **Docker Compose**: Levanta de forma local e independiente la base de datos y el contenedor de la API FastAPI.
