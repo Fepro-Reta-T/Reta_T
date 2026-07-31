@@ -7,6 +7,7 @@ from app.models.user import RoleEnum
 
 class UserCreate(BaseModel):
     email: EmailStr
+    telefono: str | None = None
     password: str
     full_name: str
     role: RoleEnum = RoleEnum.PLAYER
@@ -17,6 +18,7 @@ class UserOut(BaseModel):
 
     id: uuid.UUID
     email: EmailStr
+    telefono: str | None
     full_name: str
     role: RoleEnum
     is_active: bool

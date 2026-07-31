@@ -8,9 +8,9 @@ description: Usar antes de tocar la cola offline o el motor de sincronización d
 ## Flujo obligatorio (no alterar sin discutirlo)
 
 1. Usuario registra un evento en la UI.
-2. Se guarda de inmediato en la cola local (IndexedDB), con un `client_event_id` (UUID) generado en el dispositivo.
+2. Se guarda de inmediato en la cola local (IndexedDB), con un `client_event_id` (UUID) generado en el dispositivo y un `client_timestamp` exacto (para Event Sourcing).
 3. Se detecta conexión disponible (listener de `online`/`offline` + verificación real contra el backend, no solo `navigator.onLine`).
-4. Se envía a `backend/api` incluyendo el `client_event_id`.
+4. Se envía a `backend/api` incluyendo el `client_event_id` y el `client_timestamp`.
 5. El backend confirma recepción (200/201) o informa duplicado (200 con flag "ya existía", no error).
 6. Solo al confirmar, se elimina el evento de la cola local. Si no hay confirmación, permanece en cola para el próximo intento.
 
