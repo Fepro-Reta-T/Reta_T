@@ -8,6 +8,7 @@ import type { Role } from "./roles";
 export interface User {
   id: string;          // UUID serializado como string
   email: string;
+  telefono?: string | null;
   full_name: string;
   role: Role;
   is_active: boolean;
@@ -19,6 +20,7 @@ export interface User {
  */
 export interface RegisterPayload {
   email: string;
+  telefono?: string;
   password: string;
   full_name: string;
   role?: Role;         // El backend asigna PLAYER por defecto si se omite

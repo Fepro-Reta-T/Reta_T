@@ -9,7 +9,7 @@ description: Usar antes de crear un EventType nuevo, modificar el schema de Matc
 
 - `Sport`: fútbol, básquet, vóley, etc.
 - `EventType`: acción posible dentro de un deporte (gol, tarjeta amarilla, falta, punto, etc.). Pertenece a uno o más `Sport`.
-- `MatchEvent`: instancia real de un evento durante un partido. Tiene `event_type_id`, `match_id`, `metadata` (JSONB), timestamp, y el id idempotente generado en cliente (ver skill `pwa-offline-sync`).
+- `MatchEvent`: instancia real de un evento durante un partido. Tiene `event_type_id`, `match_id`, `metadata` (JSONB), `client_timestamp` exacto (generado en el celular para Event Sourcing), y el id idempotente generado en cliente (ver skill `pwa-offline-sync`).
 
 **Nunca** crear una tabla específica por deporte. Todo pasa por este modelo (regla no negociable, ver `.agent/rules/database.md`).
 
@@ -36,4 +36,5 @@ description: Usar antes de crear un EventType nuevo, modificar el schema de Matc
 
 - Guardar una clave nueva en `metadata` sin pasar por el checklist de arriba ("clave ad-hoc").
 - Duplicar un `EventType` casi idéntico en vez de reutilizar uno existente con un campo opcional distinto.
-- Asumir que el orden de eventos en la UI refleja el orden real de ocurrencia — siempre ordenar por timestamp del servidor, no por orden de llegada de sync.
+- Asumir que el orden de eventos en la UI refleja el orden real de ocurrencia — **siempre ordenar por `client_timestamp` (Event Sourcing)**, no por orden de llegada de sync ni por `created_at` del servidor, ya que la PWA puede enviar eventos desfasados al recuperar conexión.
+- Olvidar crear un **índice GIN** para los campos clave dentro del JSONB (`player_id`, `minute`). Sin este índice, las consultas de estadísticas masivas colapsarán la base de datos a futuro.
