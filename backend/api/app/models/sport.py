@@ -12,7 +12,7 @@ class Sport(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nombre = Column(String, nullable=False, index=True)
     is_active = Column(Boolean, default=True)
-
+    datos_adicionales = Column(JSON, nullable=True)
     event_types = relationship("EventType", back_populates="sport")
     tournaments = relationship("Tournament", back_populates="sport")
 
@@ -23,7 +23,7 @@ class EventType(Base):
     sport_id = Column(UUID(as_uuid=True), ForeignKey("sports.id"))
     nombre = Column(String, nullable=False)
     # CAMBIO AQUÍ: metadata -> meta_data
-    meta_data_schema = Column(JSON, nullable=True)
+    datos_adicionales = Column(JSON, nullable=True)
 
     sport = relationship("Sport", back_populates="event_types")
     match_events = relationship("MatchEvent", back_populates="event_type")
@@ -40,6 +40,6 @@ class MatchEvent(Base):
     client_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     # CAMBIO IMPORTANTE: Cambiamos JSON por JSONB para poder usar el índice GIN
-    meta_data = Column(JSONB, nullable=True)
+    datos_adicionales = Column(JSONB, nullable=True)
 
     event_type = relationship("EventType", back_populates="match_events")

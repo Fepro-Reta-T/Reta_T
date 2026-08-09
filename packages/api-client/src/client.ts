@@ -12,21 +12,43 @@
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
-    public readonly detail: string,
+    public readonly detail: any,
   ) {
-    super(`API error ${status}: ${detail}`);
+    let message = `API error ${status}`;
+    
+    if (typeof detail === 'string') {
+      message += `: ${detail}`;
+    } else if (Array.isArray(detail)) {
+      const errors = detail.map((d: any) => {
+        const field = d.loc?.join('.') || 'campo';
+        return `${field}: ${d.msg}`;
+      }).join(', ');
+      message += `: ${errors}`;
+    } else if (detail && typeof detail === 'object') {
+      message += `: ${JSON.stringify(detail)}`;
+    }
+    
+    super(message);
     this.name = "ApiError";
   }
 }
 
 export class ApiClient {
   private token: string | null = null;
+  private onUnauthorized: (() => void) | null = null;
 
   constructor(private readonly baseUrl: string) {}
 
-  /** Guarda el JWT para incluirlo en todas las requests siguientes. */
   setToken(token: string | null): void {
     this.token = token;
+  }
+
+  getToken(): string | null {
+    return this.token;
+  }
+
+  setUnauthorizedHandler(fn: () => void): void {
+    this.onUnauthorized = fn;
   }
 
   private get headers(): HeadersInit {
@@ -56,18 +78,62 @@ export class ApiClient {
     return this.handleResponse<T>(res);
   }
 
+  async put<T>(path: string, body: unknown): Promise<T> {
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: "PUT",
+      headers: this.headers,
+      body: JSON.stringify(body),
+    });
+
+    if (res.status === 204) {
+      return null as T;
+    }
+
+    return this.handleResponse<T>(res);
+  }
+
+  async delete<T>(path: string): Promise<T> {
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method: "DELETE",
+      headers: this.headers,
+    });
+
+    if (res.status === 204) {
+      return null as T;
+    }
+
+    return this.handleResponse<T>(res);
+  }
+
   private async handleResponse<T>(res: Response): Promise<T> {
+    if (res.status === 401) {
+      this.onUnauthorized?.();
+    }
+
     if (!res.ok) {
-      let detail = "Error desconocido";
+      let detail: any = "Error desconocido";
       try {
-        const json = (await res.json()) as { detail?: string };
-        detail = json?.detail ?? detail;
+        const json = await res.json();
+        detail = json?.detail ?? json ?? "Error desconocido";
       } catch {
-        // Error de parseo — mantener mensaje genérico
       }
       throw new ApiError(res.status, detail);
     }
-    return res.json() as Promise<T>;
+
+    if (res.status === 204) {
+      return null as T;
+    }
+
+    const text = await res.text();
+    if (!text) {
+      return null as T;
+    }
+
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      return null as T;
+    }
   }
 }
 
