@@ -18,6 +18,7 @@
     "@reta-t/types": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^26.1.2",
     "typescript": "^5.4.0"
   }
 }

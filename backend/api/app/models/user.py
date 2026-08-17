@@ -2,8 +2,8 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum as SAEnum, String, Uuid, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Boolean, Column, DateTime, Enum as SAEnum, String, Uuid, func, JSON
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
@@ -46,3 +46,6 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+    datos_adicionales = Column(JSON, nullable=True)
+    canchas = relationship("Cancha", back_populates="propietario", cascade="all, delete-orphan")
+    partidos_gestionados = relationship("Partido", back_populates="match_manager")

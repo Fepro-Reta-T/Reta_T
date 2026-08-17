@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     Ver .agent/rules/security.md — nunca commitear un .env real.
     """
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file="../../.env", extra="ignore")
 
     database_url: str
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
