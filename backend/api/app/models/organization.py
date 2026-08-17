@@ -1,7 +1,9 @@
-from sqlalchemy import Column, String, ForeignKey, Table
+# backend/api/app/models/organization.py
+from sqlalchemy import Column, String, ForeignKey, Table, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import uuid
+from datetime import datetime
 from app.core.database import Base
 
 # Tabla pivote
@@ -12,6 +14,7 @@ inscripcion_table = Table(
     Column("equipo_id", UUID(as_uuid=True), ForeignKey("equipos.id"))
 )
 
+
 class Equipo(Base):
     __tablename__ = "equipos"
 
@@ -19,9 +22,12 @@ class Equipo(Base):
     nombre = Column(String, nullable=False, index=True)
     color = Column(String, nullable=True)
     logo_url = Column(String, nullable=True)
-
+    datos_adicionales = Column(JSON, nullable=True)
     torneos = relationship("Tournament", secondary=inscripcion_table, back_populates="equipos")
     participantes = relationship("Participante", back_populates="equipo")
+    partidos_locales = relationship("Partido", foreign_keys="Partido.equipo_local_id", back_populates="equipo_local")
+    partidos_visitantes = relationship("Partido", foreign_keys="Partido.equipo_visitante_id", back_populates="equipo_visitante")
+
 
 class Tournament(Base):
     __tablename__ = "torneos"
@@ -32,6 +38,8 @@ class Tournament(Base):
     
     sport_id = Column(UUID(as_uuid=True), ForeignKey("sports.id"))
     organizer_id = Column(UUID(as_uuid=True), ForeignKey("users.id")) 
+    datos_adicionales = Column(JSON, nullable=True)
 
     sport = relationship("Sport", back_populates="tournaments")
     equipos = relationship("Equipo", secondary=inscripcion_table, back_populates="torneos")
+    partidos = relationship("Partido", back_populates="torneo")

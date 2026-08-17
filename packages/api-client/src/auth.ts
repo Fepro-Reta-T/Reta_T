@@ -36,6 +36,16 @@ export function createAuthApi(client: ApiClient) {
     },
 
     /**
+     * Realiza el login y guarda el token en el `client` automáticamente.
+     * Útil para centralizar el manejo del JWT y evitar olvidos en callers.
+     */
+    async loginAndSetToken(payload: LoginPayload): Promise<AuthToken> {
+      const token = await client.post<AuthToken>("/auth/login", payload);
+      client.setToken(token.access_token);
+      return token;
+    },
+
+    /**
      * Devuelve el perfil del usuario autenticado.
      * Requiere que client.setToken() haya sido llamado previamente.
      */
