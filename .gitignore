@@ -27,3 +27,8 @@ venv/
 # Antigravity — artefactos de sesión de trabajo (no compartidos)
 implementation_plan.md
 walkthrough.md
+
+# Archivos y documentación privada
+private/
+.private/
+
