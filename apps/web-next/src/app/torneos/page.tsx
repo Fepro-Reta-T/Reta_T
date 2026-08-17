@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { torneosApi } from "@/lib/api";
 import type { Torneo } from "@reta-t/types";
+import AppLayout from "@/components/AppLayout";
 
 export default function TorneosPage() {
   const [torneos, setTorneos] = useState<Torneo[]>([]);
@@ -52,11 +53,8 @@ export default function TorneosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto">
-        <Link href="/dashboard" className="text-muted-foreground hover:text-foreground mb-4 inline-block">
-          ← Volver al Dashboard
-        </Link>
+    <AppLayout>
+      <div className="p-4 md:p-8 max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Torneos</h1>
           {!isInvitado && (
@@ -135,6 +133,6 @@ export default function TorneosPage() {
           </div>
         )}
       </div>
-    </div>
+    </AppLayout>
   );
 }

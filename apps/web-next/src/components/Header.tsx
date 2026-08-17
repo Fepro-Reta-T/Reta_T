@@ -27,10 +27,12 @@ export default function Header() {
     router.push("/");
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | undefined | null) => {
+    if (!name) return "?";
     return name
       .split(" ")
       .map((n) => n[0])
+      .filter(Boolean)
       .slice(0, 2)
       .join("")
       .toUpperCase();
@@ -38,15 +40,12 @@ export default function Header() {
 
   return (
     <header className="w-full bg-card/50 backdrop-blur-md border-b border-secondary px-6 py-4 flex items-center justify-between sticky top-0 z-50">
-      <Link href="/dashboard" className="flex items-center gap-2 group">
+      <Link href="/dashboard" className="flex items-center group">
         <img 
-          src="/logo_s.svg" 
+          src="/logo_completo.svg" 
           alt="Reta-T" 
-          className="w-8 h-8 object-contain transition-transform group-hover:scale-105" 
+          className="h-10 w-auto object-contain transition-transform group-hover:scale-105 dark:invert-0 invert" 
         />
-        <span className="font-bold text-lg text-foreground tracking-tight group-hover:text-primary transition-colors">
-          Reta-T
-        </span>
       </Link>
 
       <div className="relative">

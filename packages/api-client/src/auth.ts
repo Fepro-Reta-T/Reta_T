@@ -4,6 +4,7 @@ import type {
   LoginPayload,
   RegisterPayload,
   User,
+  UserOnboardingUpdate,
 } from "@reta-t/types";
 
 /**
@@ -51,6 +52,13 @@ export function createAuthApi(client: ApiClient) {
      */
     me(): Promise<User> {
       return client.get<User>("/auth/me");
+    },
+
+    /**
+     * Actualiza los datos del onboarding del usuario actual.
+     */
+    updateOnboarding(payload: UserOnboardingUpdate): Promise<User> {
+      return client.patch<User>("/auth/me/onboarding", payload);
     },
   };
 }

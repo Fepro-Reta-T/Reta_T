@@ -22,3 +22,8 @@ class UserOut(BaseModel):
     full_name: str
     role: RoleEnum
     is_active: bool
+    datos_adicionales: dict | None = None
+
+class UserOnboardingUpdate(BaseModel):
+    role: RoleEnum | None = None
+    datos_adicionales: dict | None = None

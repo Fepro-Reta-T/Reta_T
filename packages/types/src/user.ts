@@ -12,6 +12,12 @@ export interface User {
   full_name: string;
   role: Role;
   is_active: boolean;
+  datos_adicionales?: Record<string, any> | null;
+}
+
+export interface UserOnboardingUpdate {
+  role?: Role;
+  datos_adicionales?: Record<string, any> | null;
 }
 
 /**

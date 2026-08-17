@@ -4,9 +4,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models.user import User
 from app.repositories import user as user_repo
-from app.schemas.user import UserCreate
+from app.schemas.user import UserCreate, UserOnboardingUpdate
 
 
+async def update_user_onboarding(db: AsyncSession, user: User, update_data: UserOnboardingUpdate) -> User:
+    if update_data.role is not None:
+        user.role = update_data.role
+    
+    if update_data.datos_adicionales is not None:
+        # Merge if exists
+        if user.datos_adicionales:
+            current_data = dict(user.datos_adicionales)
+            current_data.update(update_data.datos_adicionales)
+            user.datos_adicionales = current_data
+        else:
+            user.datos_adicionales = update_data.datos_adicionales
+
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
 async def register_user(db: AsyncSession, data: UserCreate) -> User:
     existing = await user_repo.get_user_by_email(db, data.email)
     if existing is not None:
