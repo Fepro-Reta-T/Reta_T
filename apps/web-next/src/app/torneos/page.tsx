@@ -50,6 +50,9 @@ export default function TorneosPage() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
+        <Link href="/dashboard" className="text-muted-foreground hover:text-foreground mb-4 inline-block">
+          ← Volver al Dashboard
+        </Link>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Torneos</h1>
           <Link

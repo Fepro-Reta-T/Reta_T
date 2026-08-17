@@ -19,7 +19,6 @@ export interface TorneoCrearPayload {
   nombre: string;
   categoria: string;
   sport_id: string;
-  organizer_id: string; 
 }
 
 export interface TorneoActualizarPayload {

@@ -18,7 +18,7 @@ def get_equipo_service(db: AsyncSession = Depends(get_db)) -> EquipoService:
 @router.post("/", response_model=EquipoResponse, status_code=status.HTTP_201_CREATED)
 async def crear_equipo(
     datos: EquipoCreate,
-    current_user: User = Depends(require_role(RoleEnum.ORGANIZER)),
+    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
     service: EquipoService = Depends(get_equipo_service)
 ):
     return await service.crear(datos)
@@ -51,7 +51,7 @@ async def obtener_equipo(
 async def actualizar_equipo(
     equipo_id: UUID,
     datos: EquipoUpdate,
-    current_user: User = Depends(require_role(RoleEnum.ORGANIZER)),
+    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
     service: EquipoService = Depends(get_equipo_service)
 ):
     equipo = await service.actualizar(equipo_id, datos)
@@ -62,7 +62,7 @@ async def actualizar_equipo(
 @router.delete("/{equipo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def eliminar_equipo(
     equipo_id: UUID,
-    current_user: User = Depends(require_role(RoleEnum.ORGANIZER)),
+    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
     service: EquipoService = Depends(get_equipo_service)
 ):
     eliminado = await service.eliminar(equipo_id)

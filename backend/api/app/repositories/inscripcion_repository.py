@@ -2,6 +2,7 @@
 from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from app.models.organization import Equipo, Tournament
 from app.schemas.inscripcion import InscripcionCreate
 
@@ -11,9 +12,11 @@ class InscripcionRepository:
         self.db = db
 
     async def inscribir(self, torneo_id: UUID, equipo_id: UUID) -> bool:
-        # Verificar que el torneo existe
+        # Verificar que el torneo existe con sus equipos cargados
         result = await self.db.execute(
-            select(Tournament).where(Tournament.id == torneo_id)
+            select(Tournament)
+            .where(Tournament.id == torneo_id)
+            .options(selectinload(Tournament.equipos))
         )
         torneo = result.scalar_one_or_none()
         if not torneo:
@@ -39,6 +42,7 @@ class InscripcionRepository:
         result = await self.db.execute(
             select(Tournament)
             .where(Tournament.id == torneo_id)
+            .options(selectinload(Tournament.equipos))
         )
         torneo = result.scalar_one_or_none()
         if not torneo:
@@ -47,7 +51,9 @@ class InscripcionRepository:
 
     async def retirar(self, torneo_id: UUID, equipo_id: UUID) -> bool:
         result = await self.db.execute(
-            select(Tournament).where(Tournament.id == torneo_id)
+            select(Tournament)
+            .where(Tournament.id == torneo_id)
+            .options(selectinload(Tournament.equipos))
         )
         torneo = result.scalar_one_or_none()
         if not torneo:

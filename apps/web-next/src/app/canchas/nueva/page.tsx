@@ -45,11 +45,7 @@ export default function NuevaCanchaPage() {
       setError(null);
     } catch (err) {
       console.error("Error al cargar municipios:", err);
-      setMunicipios([
-        { id: '1', nombre: 'Ciudad de México' },
-        { id: '2', nombre: 'Guadalajara' },
-        { id: '3', nombre: 'Monterrey' },
-      ]);
+      setError("Error al cargar municipios del servidor.");
     } finally {
       setLoadingMunicipios(false);
     }
@@ -123,23 +119,14 @@ export default function NuevaCanchaPage() {
     }
 
     try {
-      const userStr = localStorage.getItem('user');
-      const user = userStr ? JSON.parse(userStr) : null;
-
-      const payload: any = {
+      const payload = {
         nombre: formData.nombre,
         direccion: formData.direccion,
         latitud: formData.latitud,
         longitud: formData.longitud,
         capacidad: formData.capacidad,
-        municipio_id: formData.municipio_id || municipios[0]?.id,
+        municipio_id: formData.municipio_id || municipios[0]?.id || "",
       };
-
-      if (user?.id) {
-        payload.propietario_id = user.id;
-      }
-
-      console.log("Enviando payload:", payload);
 
       await canchasApi.crear(payload);
       

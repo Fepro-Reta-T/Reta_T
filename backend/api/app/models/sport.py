@@ -22,8 +22,8 @@ class EventType(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     sport_id = Column(UUID(as_uuid=True), ForeignKey("sports.id"))
     nombre = Column(String, nullable=False)
-    # CAMBIO AQUÍ: metadata -> meta_data
-    datos_adicionales = Column(JSON, nullable=True)
+    # Mapea a la columna física "meta_data_schema" creada en las migraciones
+    datos_adicionales = Column("meta_data_schema", JSON, nullable=True)
 
     sport = relationship("Sport", back_populates="event_types")
     match_events = relationship("MatchEvent", back_populates="event_type")
@@ -39,7 +39,7 @@ class MatchEvent(Base):
     # Event Sourcing
     client_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
     
-    # CAMBIO IMPORTANTE: Cambiamos JSON por JSONB para poder usar el índice GIN
-    datos_adicionales = Column(JSONB, nullable=True)
+    # Mapea a la columna física "meta_data" compatible con SQLite (JSON) y PostgreSQL (JSONB para índice GIN)
+    datos_adicionales = Column("meta_data", JSON().with_variant(JSONB, "postgresql"), nullable=True)
 
     event_type = relationship("EventType", back_populates="match_events")

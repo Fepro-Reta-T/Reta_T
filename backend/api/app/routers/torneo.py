@@ -19,7 +19,7 @@ def get_torneo_service(db: AsyncSession = Depends(get_db)) -> TorneoService:
 @router.post("/", response_model=TorneoResponse, status_code=status.HTTP_201_CREATED)
 async def crear_torneo(
     datos: TorneoCreate,
-    current_user: User = Depends(require_role(RoleEnum.ORGANIZER)),
+    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
     service: TorneoService = Depends(get_torneo_service)
 ):
     return await service.crear(datos, current_user.id)
@@ -51,7 +51,7 @@ async def obtener_torneo(
 async def actualizar_torneo(
     torneo_id: UUID,
     datos: TorneoUpdate,
-    current_user: User = Depends(require_role(RoleEnum.ORGANIZER)),
+    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
     service: TorneoService = Depends(get_torneo_service)
 ):
     torneo = await service.actualizar(torneo_id, datos)
@@ -62,7 +62,7 @@ async def actualizar_torneo(
 @router.delete("/{torneo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def eliminar_torneo(
     torneo_id: UUID,
-    current_user: User = Depends(require_role(RoleEnum.ORGANIZER)),
+    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
     service: TorneoService = Depends(get_torneo_service)
 ):
     eliminado = await service.eliminar(torneo_id)
@@ -74,7 +74,7 @@ async def eliminar_torneo(
 async def inscribir_equipo(
     torneo_id: UUID,
     equipo_id: UUID,
-    current_user: User = Depends(require_role(RoleEnum.ORGANIZER)),
+    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
     service: TorneoService = Depends(get_torneo_service)
 ):
     resultado = await service.inscribir_equipo(torneo_id, equipo_id)
@@ -100,7 +100,7 @@ async def listar_equipos_inscritos(
 async def retirar_equipo(
     torneo_id: UUID,
     equipo_id: UUID,
-    current_user: User = Depends(require_role(RoleEnum.ORGANIZER)),
+    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
     service: TorneoService = Depends(get_torneo_service)
 ):
     resultado = await service.retirar_equipo(torneo_id, equipo_id)

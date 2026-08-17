@@ -52,7 +52,7 @@ export default function NuevoTorneoPage() {
     const userStr = localStorage.getItem('user');
     const user = userStr ? JSON.parse(userStr) : null;
 
-    if (!user?.id) {
+    if (!user) {
       setError("Debes iniciar sesión para crear un torneo");
       setLoading(false);
       return;
@@ -63,7 +63,6 @@ export default function NuevoTorneoPage() {
         nombre: formData.nombre,
         categoria: formData.categoria,
         sport_id: formData.sport_id,
-        organizer_id: user.id,
       });
       router.push("/torneos");
     } catch (err) {

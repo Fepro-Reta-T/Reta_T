@@ -10,8 +10,8 @@ from app.core.database import Base
 inscripcion_table = Table(
     "inscripciones",
     Base.metadata,
-    Column("torneo_id", UUID(as_uuid=True), ForeignKey("torneos.id")),
-    Column("equipo_id", UUID(as_uuid=True), ForeignKey("equipos.id"))
+    Column("torneo_id", UUID(as_uuid=True), ForeignKey("torneos.id"), primary_key=True),
+    Column("equipo_id", UUID(as_uuid=True), ForeignKey("equipos.id"), primary_key=True)
 )
 
 

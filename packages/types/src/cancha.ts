@@ -7,7 +7,6 @@ export interface CanchaCrearPayload {
   longitud: number;     // Resuelto en el frontend (mapa)
   capacidad: number;
   municipio_id: string; // Resuelto mediante el Reverse Geocoding en frontend
-  propietario_id?: string; 
 }
 
 // Opcional: Payload para actualizar (todo es opcional)
@@ -31,6 +30,6 @@ export interface Cancha {
     estado?: string;
   };
   
-  creado_en: string;
-  actualizado_en?: string;
+  created_at: string;
+  updated_at?: string;
 }
