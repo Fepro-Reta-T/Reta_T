@@ -11,8 +11,12 @@ export default function DashboardPage() {
     torneos: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [isInvitado, setIsInvitado] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsInvitado(localStorage.getItem('invitado') === 'true');
+    }
     cargarStats();
   }, []);
 
@@ -89,26 +93,43 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link
-            href="/canchas/nueva"
-            className="bg-primary hover:bg-primary-light text-primary-foreground text-center py-3 rounded-lg transition-colors"
-          >
-            + Nueva Cancha
-          </Link>
-          <Link
-            href="/equipos/nuevo"
-            className="bg-primary hover:bg-primary-light text-primary-foreground text-center py-3 rounded-lg transition-colors"
-          >
-            + Nuevo Equipo
-          </Link>
-          <Link
-            href="/torneos/nuevo"
-            className="bg-primary hover:bg-primary-light text-primary-foreground text-center py-3 rounded-lg transition-colors"
-          >
-            + Nuevo Torneo
-          </Link>
-        </div>
+        {!isInvitado ? (
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link
+              href="/canchas/nueva"
+              className="bg-primary hover:bg-primary-light text-primary-foreground text-center py-3 rounded-lg transition-colors"
+            >
+              + Nueva Cancha
+            </Link>
+            <Link
+              href="/equipos/nuevo"
+              className="bg-primary hover:bg-primary-light text-primary-foreground text-center py-3 rounded-lg transition-colors"
+            >
+              + Nuevo Equipo
+            </Link>
+            <Link
+              href="/torneos/nuevo"
+              className="bg-primary hover:bg-primary-light text-primary-foreground text-center py-3 rounded-lg transition-colors"
+            >
+              + Nuevo Torneo
+            </Link>
+          </div>
+        ) : (
+          <div className="mt-8 p-6 rounded-xl border border-secondary bg-secondary/10 text-center space-y-3">
+            <p className="text-muted-foreground text-sm">
+              Estás explorando en modo **Invitado**. Inicia sesión o regístrate para poder crear y administrar torneos, equipos y canchas.
+            </p>
+            <div className="flex justify-center gap-4">
+              <Link href="/login" className="text-primary hover:underline font-bold text-sm">
+                Iniciar Sesión
+              </Link>
+              <span className="text-muted-foreground">|</span>
+              <Link href="/" className="text-primary hover:underline font-bold text-sm">
+                Crear Cuenta
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -17,9 +17,6 @@ def get_municipio_service(db: AsyncSession = Depends(get_db)) -> MunicipioServic
 # ✅ CORREGIDO: require_role con lista
 @router.get("/", response_model=List[MunicipioResponse])
 async def listar_municipios(
-    current_user: User = Depends(
-        require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER, RoleEnum.VIEWER)
-    ),
     service: MunicipioService = Depends(get_municipio_service)
 ):
     return await service.listar()

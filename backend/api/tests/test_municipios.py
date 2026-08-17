@@ -72,8 +72,8 @@ def test_listar_municipios(client):
         "clave_inegi": "32001"
     }, headers=admin_headers)
 
-    # Listar como organizer
-    r = client.get("/municipios/", headers=organizer_headers)
+    # Listar de forma pública sin headers (invitado)
+    r = client.get("/municipios/")
     assert r.status_code == 200
     muni_list = r.json()
     assert len(muni_list) >= 1

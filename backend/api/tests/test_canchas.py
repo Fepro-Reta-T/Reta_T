@@ -61,14 +61,14 @@ def test_crear_y_listar_canchas(client):
     assert "propietario_id" in cancha_body
     cancha_id = cancha_body["id"]
 
-    # 4. Listar canchas (debe incluir la creada)
-    r = client.get("/canchas/", headers=organizer_headers)
+    # 4. Listar canchas (debe incluir la creada, funciona de manera pública sin headers)
+    r = client.get("/canchas/")
     assert r.status_code == 200
     canchas = r.json()
     assert len(canchas) >= 1
     assert any(c["id"] == cancha_id for c in canchas)
 
-    # 5. Obtener cancha por ID
-    r = client.get(f"/canchas/{cancha_id}", headers=organizer_headers)
+    # 5. Obtener cancha por ID (público sin headers)
+    r = client.get(f"/canchas/{cancha_id}")
     assert r.status_code == 200
     assert r.json()["nombre"] == "Cancha Central"

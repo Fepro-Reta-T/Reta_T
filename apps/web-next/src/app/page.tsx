@@ -1,17 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function Home() {
   const router = useRouter();
-  const [view, setView] = useState<"splash" | "roles">("splash");
+  const [step, setStep] = useState<"splash" | "auth" | "roles">("splash");
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
 
-  const handleStart = () => {
-    setView("roles");
-  };
+  // Iniciar la transición del logo después de 1.8 segundos
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setStep("auth");
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleRoleSelect = (role: string) => {
     setSelectedRole(role);
@@ -20,133 +24,149 @@ export default function Home() {
   const handleContinue = () => {
     if (selectedRole) {
       localStorage.setItem('userRole', selectedRole);
+      localStorage.removeItem('invitado'); // Se registra, ya no es invitado
       router.push('/register');
     }
   };
 
+  const handleGuestAccess = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
+    localStorage.setItem('invitado', 'true');
+    router.push('/dashboard');
+  };
+
   return (
-    <main className="flex-1 flex flex-col min-h-screen bg-background text-foreground transition-colors duration-300">
+    <main className="relative flex-1 flex flex-col min-h-screen bg-gradient-to-tr from-neutral-950 via-zinc-900 to-red-950/20 text-foreground overflow-hidden">
       
-      {/* PANTALLA 1: SPLASH / BIENVENIDA */}
-      {view === "splash" && (
-        <div className="flex-1 flex flex-col items-center justify-center p-8 space-y-10">
-          <div className="flex justify-center">
-            <img 
-              src="/logo.png" 
-              alt="Reta-T Logo" 
-              className="w-64 h-auto max-w-full object-contain drop-shadow-xl"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
-            />
-            <div className="text-4xl font-bold text-red-700">Reta-T</div>
-          </div>
+      {/* Elementos decorativos de fondo */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-red-900/10 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-red-900/10 blur-[120px] pointer-events-none" />
 
-          <p className="text-lg text-muted-foreground text-center font-light tracking-wide">
-            Pasión real, inteligencia viva
-          </p>
-
-          <button 
-            onClick={handleStart}
-            className="w-full max-w-xs py-4 rounded-full bg-primary hover:bg-primary-light text-primary-foreground font-bold text-lg shadow-lg shadow-primary/30 transition-all transform hover:scale-105 active:scale-95"
-          >
-            COMENZAR
-          </button>
+      {/* CONTENEDOR DEL LOGO ANIMADO */}
+      <div className={`flex-1 flex flex-col items-center justify-center p-6 transition-all duration-1000 ease-out ${
+        step === "splash" 
+          ? "transform translate-y-0" 
+          : "transform -translate-y-20 md:-translate-y-28 pt-8 flex-none justify-start"
+      }`}>
+        <div className={`transition-all duration-1000 ease-out ${
+          step === "splash" 
+            ? "scale-100 filter drop-shadow-[0_0_25px_rgba(153,27,27,0.4)]" 
+            : "scale-60 md:scale-50"
+        }`}>
+          <img 
+            src="/logo_s.svg" 
+            alt="Reta-T Logo" 
+            className="w-48 h-48 md:w-64 md:h-64 object-contain animate-[logo-in_1.2s_ease-out]"
+          />
         </div>
-      )}
+      </div>
 
-      {/* PANTALLA 2: SELECCIÓN DE ROL */}
-      {view === "roles" && (
-        <div className="flex-1 flex flex-col items-center justify-center p-8">
-          <div className="max-w-md w-full space-y-8">
-            
-            <div className="text-center flex justify-center mb-4">
-              <div className="text-2xl font-bold text-red-700">Reta-T</div>
+      {/* CONTENEDOR DE LA TARJETA DE OPCIONES (SLIDE-UP) */}
+      <div className={`w-full max-w-md mx-auto px-6 pb-12 transition-all duration-1000 cubic-bezier(0.16, 1, 0.3, 1) ${
+        step === "splash" 
+          ? "transform translate-y-96 opacity-0 pointer-events-none h-0 overflow-hidden" 
+          : "transform translate-y-0 opacity-100"
+      }`}>
+        {step === "auth" && (
+          <div className="bg-card/85 backdrop-blur-md rounded-2xl border border-border p-6 shadow-2xl space-y-6 animate-[slide-up_0.8s_ease-out]">
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-extrabold text-foreground tracking-tight">Bienvenido a Reta-T</h2>
+              <p className="text-sm text-muted-foreground">La fuente de inteligencia deportiva de tu comunidad</p>
             </div>
 
-            <div className="p-6 rounded-xl border bg-card text-card-foreground shadow-sm space-y-4">
-              <h2 className="text-2xl font-bold text-foreground">¿Cuál es tu rol?</h2>
-              <p className="text-sm text-muted-foreground">Selecciona cómo vas a usar Reta-T</p>
-              
-              <div className="space-y-3 pt-2">
-                <button 
-                  onClick={() => handleRoleSelect('organizador')}
-                  className={`w-full p-4 rounded-lg text-left transition-all flex items-center gap-4 ${
-                    selectedRole === 'organizador' 
-                      ? 'bg-primary/10 border-2 border-primary' 
-                      : 'bg-secondary hover:bg-secondary/80'
-                  }`}
-                >
-                  <span className="text-2xl"></span>
-                  <div>
-                    <div className="font-semibold text-foreground">Organizador</div>
-                    <div className="text-xs text-muted-foreground">Creo torneos, gestiono equipos y canchas</div>
-                  </div>
-                  {selectedRole === 'organizador' && (
-                    <span className="ml-auto text-primary">✓</span>
-                  )}
-                </button>
-
-                <button 
-                  onClick={() => handleRoleSelect('encargado_campo')}
-                  className={`w-full p-4 rounded-lg text-left transition-all flex items-center gap-4 ${
-                    selectedRole === 'encargado_campo' 
-                      ? 'bg-primary/10 border-2 border-primary' 
-                      : 'bg-secondary hover:bg-secondary/80'
-                  }`}
-                >
-                  <span className="text-2xl">📋</span>
-                  <div>
-                    <div className="font-semibold text-foreground">Encargado de campo</div>
-                    <div className="text-xs text-muted-foreground">Registro partidos desde la cancha</div>
-                  </div>
-                  {selectedRole === 'encargado_campo' && (
-                    <span className="ml-auto text-primary">✓</span>
-                  )}
-                </button>
-
-                <button 
-                  onClick={() => handleRoleSelect('municipio')}
-                  className={`w-full p-4 rounded-lg text-left transition-all flex items-center gap-4 ${
-                    selectedRole === 'municipio' 
-                      ? 'bg-primary/10 border-2 border-primary' 
-                      : 'bg-secondary hover:bg-secondary/80'
-                  }`}
-                >
-                  <span className="text-2xl">🏛️</span>
-                  <div>
-                    <div className="font-semibold text-foreground">Municipio</div>
-                    <div className="text-xs text-muted-foreground">Visualizo estadísticas de uso de espacios</div>
-                  </div>
-                  {selectedRole === 'municipio' && (
-                    <span className="ml-auto text-primary">✓</span>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <button 
-              onClick={handleContinue}
-              disabled={!selectedRole}
-              className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all ${
-                selectedRole 
-                  ? 'bg-primary hover:bg-primary-light text-primary-foreground shadow-primary/30 hover:scale-105' 
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              CONTINUAR
-            </button>
-
-            <div className="text-center text-sm text-muted-foreground">
-              ¿Ya tienes cuenta?{" "}
-              <Link href="/login" className="text-primary font-medium hover:underline">
-                Iniciar sesión
+            <div className="space-y-4 pt-2">
+              <Link 
+                href="/login" 
+                className="block w-full py-4 rounded-xl bg-primary hover:bg-primary-light text-primary-foreground text-center font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+              >
+                INICIAR SESIÓN
               </Link>
+              
+              <button 
+                onClick={() => setStep("roles")}
+                className="w-full py-4 rounded-xl border border-secondary bg-secondary/50 hover:bg-secondary text-foreground text-center font-bold transition-all hover:scale-[1.02] active:scale-95"
+              >
+                REGISTRARSE / CREAR CUENTA
+              </button>
+
+              <button 
+                onClick={handleGuestAccess}
+                className="w-full py-4 rounded-xl border border-border/80 bg-neutral-900/40 hover:bg-neutral-900/80 text-muted-foreground hover:text-foreground text-center font-bold transition-all hover:scale-[1.02] active:scale-95 text-sm"
+              >
+                EXPLORAR COMO INVITADO
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
+        {step === "roles" && (
+          <div className="bg-card/85 backdrop-blur-md rounded-2xl border border-border p-6 shadow-2xl space-y-6 animate-[slide-up_0.6s_ease-out]">
+            <div className="space-y-1">
+              <h2 className="text-xl font-bold text-foreground">¿Cuál es tu rol?</h2>
+              <p className="text-xs text-muted-foreground">Selecciona cómo vas a usar Reta-T</p>
+            </div>
+
+            <div className="space-y-3">
+              <button 
+                onClick={() => handleRoleSelect('organizador')}
+                className={`w-full p-4 rounded-xl text-left transition-all flex items-center gap-4 border ${
+                  selectedRole === 'organizador' 
+                    ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5' 
+                    : 'bg-secondary/40 border-transparent hover:bg-secondary/80'
+                }`}
+              >
+                <span className="text-2xl">🏆</span>
+                <div>
+                  <div className="font-semibold text-foreground text-sm">Organizador</div>
+                  <div className="text-xs text-muted-foreground">Creo torneos, gestiono equipos y canchas</div>
+                </div>
+                {selectedRole === 'organizador' && (
+                  <span className="ml-auto text-primary font-bold">✓</span>
+                )}
+              </button>
+
+              <button 
+                onClick={() => handleRoleSelect('encargado_campo')}
+                className={`w-full p-4 rounded-xl text-left transition-all flex items-center gap-4 border ${
+                  selectedRole === 'encargado_campo' 
+                    ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5' 
+                    : 'bg-secondary/40 border-transparent hover:bg-secondary/80'
+                }`}
+              >
+                <span className="text-2xl">📋</span>
+                <div>
+                  <div className="font-semibold text-foreground text-sm">Encargado de campo</div>
+                  <div className="text-xs text-muted-foreground">Registro partidos desde la cancha</div>
+                </div>
+                {selectedRole === 'encargado_campo' && (
+                  <span className="ml-auto text-primary font-bold">✓</span>
+                )}
+              </button>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button 
+                onClick={() => setStep("auth")}
+                className="w-1/3 py-3 rounded-xl border border-secondary hover:bg-secondary/50 text-foreground font-bold transition-all active:scale-95 text-sm"
+              >
+                ATRÁS
+              </button>
+              <button 
+                onClick={handleContinue}
+                disabled={!selectedRole}
+                className={`flex-1 py-3 rounded-xl font-bold transition-all active:scale-95 text-sm ${
+                  selectedRole 
+                    ? 'bg-primary hover:bg-primary-light text-primary-foreground shadow-lg shadow-primary/20' 
+                    : 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
+                }`}
+              >
+                CONTINUAR
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </main>
   );
 }

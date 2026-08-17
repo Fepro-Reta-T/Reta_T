@@ -27,20 +27,14 @@ async def crear_cancha(
 
 @router.get("/", response_model=List[CanchaResponse])
 async def listar_canchas(
-    service: CanchaService = Depends(get_cancha_service),
-    current_user: User = Depends(
-        require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER, RoleEnum.VIEWER, RoleEnum.PLAYER)
-    )
+    service: CanchaService = Depends(get_cancha_service)
 ):
     return await service.listar_canchas()
 
 @router.get("/{cancha_id}", response_model=CanchaResponse)
 async def obtener_cancha(
     cancha_id: UUID,
-    service: CanchaService = Depends(get_cancha_service),
-    current_user: User = Depends(
-        require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER, RoleEnum.VIEWER, RoleEnum.PLAYER)
-    )
+    service: CanchaService = Depends(get_cancha_service)
 ):
     cancha = await service.obtener_cancha(cancha_id)
     if not cancha:

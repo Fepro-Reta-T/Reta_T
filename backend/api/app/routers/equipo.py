@@ -26,10 +26,7 @@ async def crear_equipo(
 # ✅ CORREGIDO: Agregado require_role
 @router.get("/", response_model=List[EquipoResponse])
 async def listar_equipos(
-    service: EquipoService = Depends(get_equipo_service),
-    current_user: User = Depends(
-        require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER, RoleEnum.VIEWER, RoleEnum.PLAYER)
-    )
+    service: EquipoService = Depends(get_equipo_service)
 ):
     return await service.listar()
 
@@ -37,10 +34,7 @@ async def listar_equipos(
 @router.get("/{equipo_id}", response_model=EquipoResponse)
 async def obtener_equipo(
     equipo_id: UUID,
-    service: EquipoService = Depends(get_equipo_service),
-    current_user: User = Depends(
-        require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER, RoleEnum.VIEWER, RoleEnum.PLAYER)
-    )
+    service: EquipoService = Depends(get_equipo_service)
 ):
     equipo = await service.obtener(equipo_id)
     if not equipo:

@@ -26,10 +26,7 @@ async def crear_torneo(
 
 @router.get("/", response_model=List[TorneoResponse])
 async def listar_torneos(
-    service: TorneoService = Depends(get_torneo_service),
-    current_user: User = Depends(
-        require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER, RoleEnum.VIEWER, RoleEnum.PLAYER)
-    )
+    service: TorneoService = Depends(get_torneo_service)
 ):
     return await service.listar()
 
@@ -37,10 +34,7 @@ async def listar_torneos(
 @router.get("/{torneo_id}", response_model=TorneoResponse)
 async def obtener_torneo(
     torneo_id: UUID,
-    service: TorneoService = Depends(get_torneo_service),
-    current_user: User = Depends(
-        require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER, RoleEnum.VIEWER, RoleEnum.PLAYER)
-    )
+    service: TorneoService = Depends(get_torneo_service)
 ):
     torneo = await service.obtener(torneo_id)
     if not torneo:
@@ -88,10 +82,7 @@ async def inscribir_equipo(
 @router.get("/{torneo_id}/equipos", response_model=List[EquipoResponse])
 async def listar_equipos_inscritos(
     torneo_id: UUID,
-    service: TorneoService = Depends(get_torneo_service),
-    current_user: User = Depends(
-        require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER, RoleEnum.VIEWER, RoleEnum.PLAYER)
-    )
+    service: TorneoService = Depends(get_torneo_service)
 ):
     equipos = await service.listar_equipos_inscritos(torneo_id)
     return equipos

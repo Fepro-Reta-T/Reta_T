@@ -9,8 +9,12 @@ export default function CanchasPage() {
   const [canchas, setCanchas] = useState<Cancha[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInvitado, setIsInvitado] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsInvitado(localStorage.getItem('invitado') === 'true');
+    }
     cargarCanchas();
   }, []);
 
@@ -55,12 +59,14 @@ export default function CanchasPage() {
         </Link>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Canchas</h1>
-          <Link
-            href="/canchas/nueva"
-            className="bg-primary hover:bg-primary-light text-primary-foreground px-4 py-2 rounded-lg transition-colors"
-          >
-            + Nueva Cancha
-          </Link>
+          {!isInvitado && (
+            <Link
+              href="/canchas/nueva"
+              className="bg-primary hover:bg-primary-light text-primary-foreground px-4 py-2 rounded-lg transition-colors"
+            >
+              + Nueva Cancha
+            </Link>
+          )}
         </div>
 
         {error && (
@@ -72,12 +78,14 @@ export default function CanchasPage() {
         {canchas.length === 0 ? (
           <div className="text-center py-12 bg-card rounded-xl border border-secondary">
             <p className="text-muted-foreground text-lg">No hay canchas registradas</p>
-            <Link
-              href="/canchas/nueva"
-              className="inline-block mt-4 text-primary hover:underline"
-            >
-              Crear la primera cancha →
-            </Link>
+            {!isInvitado && (
+              <Link
+                href="/canchas/nueva"
+                className="inline-block mt-4 text-primary hover:underline"
+              >
+                Crear la primera cancha →
+              </Link>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -101,12 +109,14 @@ export default function CanchasPage() {
                       {cancha.latitud.toFixed(4)}, {cancha.longitud.toFixed(4)}
                     </p>
                   </div>
-                  <button
-                    onClick={() => eliminarCancha(cancha.id)}
-                    className="text-sm text-red-600 hover:underline"
-                  >
-                    Eliminar
-                  </button>
+                  {!isInvitado && (
+                    <button
+                      onClick={() => eliminarCancha(cancha.id)}
+                      className="text-sm text-red-600 hover:underline"
+                    >
+                      Eliminar
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

@@ -9,8 +9,12 @@ export default function TorneosPage() {
   const [torneos, setTorneos] = useState<Torneo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInvitado, setIsInvitado] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsInvitado(localStorage.getItem('invitado') === 'true');
+    }
     cargarTorneos();
   }, []);
 
@@ -55,12 +59,14 @@ export default function TorneosPage() {
         </Link>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Torneos</h1>
-          <Link
-            href="/torneos/nuevo"
-            className="bg-primary hover:bg-primary-light text-primary-foreground px-4 py-2 rounded-lg transition-colors"
-          >
-            + Nuevo Torneo
-          </Link>
+          {!isInvitado && (
+            <Link
+              href="/torneos/nuevo"
+              className="bg-primary hover:bg-primary-light text-primary-foreground px-4 py-2 rounded-lg transition-colors"
+            >
+              + Nuevo Torneo
+            </Link>
+          )}
         </div>
 
         {error && (
@@ -72,12 +78,14 @@ export default function TorneosPage() {
         {torneos.length === 0 ? (
           <div className="text-center py-12 bg-card rounded-xl border border-secondary">
             <p className="text-muted-foreground text-lg">No hay torneos registrados</p>
-            <Link
-              href="/torneos/nuevo"
-              className="inline-block mt-4 text-primary hover:underline"
-            >
-              Crear el primer torneo →
-            </Link>
+            {!isInvitado && (
+              <Link
+                href="/torneos/nuevo"
+                className="inline-block mt-4 text-primary hover:underline"
+              >
+                Crear el primer torneo →
+              </Link>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -102,19 +110,25 @@ export default function TorneosPage() {
                       </p>
                     )}
                   </div>
-                  <button
-                    onClick={() => eliminarTorneo(torneo.id)}
-                    className="text-sm text-red-600 hover:underline"
-                  >
-                    Eliminar
-                  </button>
-                  <Link href={`/torneos/${torneo.id}`}>
+                  {!isInvitado && (
+                    <button
+                      onClick={() => eliminarTorneo(torneo.id)}
+                      className="text-sm text-red-600 hover:underline"
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center justify-between border-t border-secondary mt-4 pt-3 text-sm">
+                  <Link href={`/torneos/${torneo.id}`} className="text-primary hover:underline">
                     Ver detalles
                   </Link>
 
-                  <Link href={`/torneos/${torneo.id}/inscribir`}>
-                    Inscribir Equipo
-                  </Link>
+                  {!isInvitado && (
+                    <Link href={`/torneos/${torneo.id}/inscribir`} className="text-primary hover:underline">
+                      Inscribir Equipo
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}

@@ -9,8 +9,12 @@ export default function EquiposPage() {
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInvitado, setIsInvitado] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsInvitado(localStorage.getItem('invitado') === 'true');
+    }
     cargarEquipos();
   }, []);
 
@@ -34,7 +38,7 @@ export default function EquiposPage() {
       await equiposApi.eliminar(id);
       setEquipos(equipos.filter(e => e.id !== id));
     } catch (err) {
-      alert("Error al eliminar el equipo");
+      alert("Error al eliminar the equipo");
       console.error(err);
     }
   }
@@ -55,12 +59,14 @@ export default function EquiposPage() {
         </Link>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Equipos</h1>
-          <Link
-            href="/equipos/nuevo"
-            className="bg-primary hover:bg-primary-light text-primary-foreground px-4 py-2 rounded-lg transition-colors"
-          >
-            + Nuevo Equipo
-          </Link>
+          {!isInvitado && (
+            <Link
+              href="/equipos/nuevo"
+              className="bg-primary hover:bg-primary-light text-primary-foreground px-4 py-2 rounded-lg transition-colors"
+            >
+              + Nuevo Equipo
+            </Link>
+          )}
         </div>
 
         {error && (
@@ -72,12 +78,14 @@ export default function EquiposPage() {
         {equipos.length === 0 ? (
           <div className="text-center py-12 bg-card rounded-xl border border-secondary">
             <p className="text-muted-foreground text-lg">No hay equipos registrados</p>
-            <Link
-              href="/equipos/nuevo"
-              className="inline-block mt-4 text-primary hover:underline"
-            >
-              Crear el primer equipo →
-            </Link>
+            {!isInvitado && (
+              <Link
+                href="/equipos/nuevo"
+                className="inline-block mt-4 text-primary hover:underline"
+              >
+                Crear el primer equipo →
+              </Link>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -117,12 +125,14 @@ export default function EquiposPage() {
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => eliminarEquipo(equipo.id)}
-                    className="text-sm text-red-600 hover:underline ml-2"
-                  >
-                    Eliminar
-                  </button>
+                  {!isInvitado && (
+                    <button
+                      onClick={() => eliminarEquipo(equipo.id)}
+                      className="text-sm text-red-600 hover:underline ml-2"
+                    >
+                      Eliminar
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
