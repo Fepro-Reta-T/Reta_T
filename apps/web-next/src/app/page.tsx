@@ -55,7 +55,7 @@ export default function Home() {
             : "scale-60 md:scale-50"
         }`}>
           <img 
-            src="/logo_s.svg" 
+            src="/logo_completo.svg" 
             alt="Reta-T Logo" 
             className="w-48 h-48 md:w-64 md:h-64 object-contain animate-[logo-in_1.2s_ease-out]"
           />
