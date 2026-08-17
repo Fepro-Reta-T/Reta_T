@@ -1,48 +1,56 @@
-import uuid
-
-import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from sqlalchemy import select
+from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import decode_access_token
 from app.models.user import User
-from app.repositories import user as user_repo
+import jwt
 
-# tokenUrl es solo para que /docs muestre el botón de "Authorize" apuntando al endpoint correcto.
-# El login real de este proyecto recibe JSON, no form-data — ver schemas/auth.py.
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
-
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 async def get_current_user(
-    token: str | None = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_db),
+    token: str = Depends(oauth2_scheme), 
+    db: AsyncSession = Depends(get_db)
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No se pudo validar la credencial",
+        detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    if token is None:
-        raise credentials_exception
-
+    
     try:
-        payload = decode_access_token(token)
+        # Decodificar el JWT usando tu configuración
+        payload = jwt.decode(
+            token, 
+            settings.jwt_secret_key, 
+            algorithms=[settings.jwt_algorithm]
+        )
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
     except jwt.PyJWTError:
         raise credentials_exception
-
-    raw_user_id = payload.get("sub")
-    if raw_user_id is None:
-        raise credentials_exception
-
-    try:
-        user_id = uuid.UUID(raw_user_id)
-    except ValueError:
-        raise credentials_exception
-
-    user = await user_repo.get_user_by_id(db, user_id)
+        
+    # Buscar usuario en BD de forma asíncrona
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
     if user is None:
         raise credentials_exception
-
     return user
+
+
+# DEPENDENCIA DE ROLES (Tarea del Sprint 2)
+def require_role(required_role: str):
+    async def role_checker(current_user: User = Depends(get_current_user)):
+        # Verificamos que el rol del usuario coincida. 
+        # NOTA: Si en tu modelo User el campo se llama 'role', usamos current_user.role. 
+        # Si se llama 'rol', cámbialo aquí.
+        if current_user.role != required_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Rol {required_role} requerido. Tu rol es {current_user.role}"
+            )
+        return current_user
+    return role_checker

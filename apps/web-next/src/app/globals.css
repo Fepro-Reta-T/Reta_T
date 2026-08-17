@@ -1,25 +1,50 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:where(.dark, .dark *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+@theme {
+  /* Colores base */
+  --color-background: #0a0a0a;       /* Fondo por defecto (Modo Oscuro) */
+  --color-foreground: #ededed;       /* Texto por defecto */
+  --color-card: #1c1c1c;             /* Fondo de tarjetas */
+  --color-card-foreground: #ededed;  /* Texto dentro de tarjetas */
+  --color-secondary: #262626;        /* Fondo de botones secundarios */
+  --color-secondary-foreground: #ededed;
+  --color-muted-foreground: #a1a1aa; /* Texto gris secundario */
+  --color-border: #27272a;           /* Bordes de inputs/tarjetas */
+
+  /* PALETA PRINCIPAL: ROJO VINO */
+  --color-primary: #991b1b;          /* El rojo vino principal */
+  --color-primary-foreground: #ffffff;
+  --color-primary-light: #b91c1c;    /* Un tono un poco más claro para hover */
+  
+  /* Fuentes (Opcional, puedes dejarlo como está) */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* 
+   Aquí definimos las variables para el MODO CLARO.
+   Cuando el usuario haga clic en un botón, la clase .dark se quitará,
+   y el navegador usará estas variables en lugar de las de arriba.
+*/
+:root:not(.dark) {
+  --color-background: #f5f5f5;       /* Fondo claro grisáceo */
+  --color-foreground: #171717;       /* Texto oscuro */
+  --color-card: #ffffff;             /* Tarjetas blancas */
+  --color-card-foreground: #171717;
+  --color-secondary: #e5e5e5;
+  --color-secondary-foreground: #171717;
+  --color-muted-foreground: #737373;
+  --color-border: #d4d4d8;
+  
+  /* El Rojo Vino se mantiene igual o lo aclaramos un poco para modo claro */
+  --color-primary: #991b1b;      
+  --color-primary-foreground: #ffffff;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-background);
+  color: var(--color-foreground);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
