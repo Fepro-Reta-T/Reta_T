@@ -5,7 +5,7 @@ from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.user import User
 from app.schemas.auth import LoginRequest, Token
-from app.schemas.user import UserCreate, UserOut
+from app.schemas.user import UserCreate, UserOut, UserOnboardingUpdate
 from app.services import auth as auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -25,3 +25,11 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)) -> Token
 @router.get("/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user)) -> User:
     return current_user
+
+@router.patch("/me/onboarding", response_model=UserOut)
+async def update_onboarding(
+    data: UserOnboardingUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    return await auth_service.update_user_onboarding(db, current_user, data)

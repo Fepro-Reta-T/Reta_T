@@ -22,7 +22,15 @@ export default function LoginPage() {
     try {
       const token = await authApi.loginAndSetToken(formData);
       setAuthToken(token.access_token);
-      router.push("/dashboard");
+      localStorage.removeItem("invitado");
+      
+      const user = await authApi.me();
+      localStorage.setItem("user", JSON.stringify(user));
+      if (!user.datos_adicionales?.onboarding_completed) {
+        router.push("/onboarding");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al iniciar sesión");
     } finally {

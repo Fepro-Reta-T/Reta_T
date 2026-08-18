@@ -72,3 +72,15 @@ body {
     transform: translateY(0);
   }
 }
+
+@keyframes shine {
+  0% {
+    transform: translateX(-100%) skewX(-15deg);
+  }
+  50% {
+    transform: translateX(100%) skewX(-15deg);
+  }
+  100% {
+    transform: translateX(100%) skewX(-15deg);
+  }
+}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { authApi } from "../../../lib/api";
+import { authApi, setAuthToken } from "../../../lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -28,7 +28,19 @@ export default function RegisterPage() {
         full_name: formData.full_name,
         telefono: formData.phone || undefined,
       });
-      router.push("/login");
+      
+      // Auto login y redirigir al onboarding
+      const token = await authApi.loginAndSetToken({
+        email: formData.email,
+        password: formData.password,
+      });
+      setAuthToken(token.access_token);
+      localStorage.removeItem("invitado");
+
+      const user = await authApi.me();
+      localStorage.setItem("user", JSON.stringify(user));
+
+      router.push("/onboarding");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al registrar");
     } finally {

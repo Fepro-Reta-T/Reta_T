@@ -10,10 +10,18 @@ export default function CanchasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isInvitado, setIsInvitado] = useState(false);
+  const [isOrganizer, setIsOrganizer] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setIsInvitado(localStorage.getItem('invitado') === 'true');
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          const u = JSON.parse(userStr);
+          setIsOrganizer(u.role === 'organizer' || u.role === 'admin');
+        } catch {}
+      }
     }
     cargarCanchas();
   }, []);
@@ -59,7 +67,7 @@ export default function CanchasPage() {
         </Link>
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Canchas</h1>
-          {!isInvitado && (
+          {isOrganizer && !isInvitado && (
             <Link
               href="/canchas/nueva"
               className="bg-primary hover:bg-primary-light text-primary-foreground px-4 py-2 rounded-lg transition-colors"
@@ -78,7 +86,7 @@ export default function CanchasPage() {
         {canchas.length === 0 ? (
           <div className="text-center py-12 bg-card rounded-xl border border-secondary">
             <p className="text-muted-foreground text-lg">No hay canchas registradas</p>
-            {!isInvitado && (
+            {isOrganizer && !isInvitado && (
               <Link
                 href="/canchas/nueva"
                 className="inline-block mt-4 text-primary hover:underline"
@@ -109,7 +117,7 @@ export default function CanchasPage() {
                       {cancha.latitud.toFixed(4)}, {cancha.longitud.toFixed(4)}
                     </p>
                   </div>
-                  {!isInvitado && (
+                  {isOrganizer && !isInvitado && (
                     <button
                       onClick={() => eliminarCancha(cancha.id)}
                       className="text-sm text-red-600 hover:underline"

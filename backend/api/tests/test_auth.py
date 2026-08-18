@@ -88,3 +88,43 @@ def test_register_with_old_spectator_role_rejected(client):
         },
     )
     assert r.status_code == 422
+
+def test_update_onboarding_succeeds(client):
+    # Registrar
+    r = client.post(
+        "/auth/register",
+        json={
+            "email": "onboarding@example.com",
+            "password": "password123",
+            "full_name": "Onboarding",
+            "role": "player",
+        },
+    )
+    assert r.status_code == 201
+
+    # Login
+    r = client.post(
+        "/auth/login",
+        json={"email": "onboarding@example.com", "password": "password123"},
+    )
+    assert r.status_code == 200
+    token = r.json()["access_token"]
+
+    # Patch Onboarding
+    patch_payload = {
+        "role": "organizer",
+        "datos_adicionales": {
+            "onboarding_completed": True,
+            "favorite_sports": ["1", "2"]
+        }
+    }
+    r = client.patch(
+        "/auth/me/onboarding",
+        headers={"Authorization": f"Bearer {token}"},
+        json=patch_payload
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["role"] == "organizer"
+    assert body["datos_adicionales"]["onboarding_completed"] is True
+    assert body["datos_adicionales"]["favorite_sports"] == ["1", "2"]

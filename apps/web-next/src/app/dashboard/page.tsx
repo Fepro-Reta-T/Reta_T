@@ -2,135 +2,178 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { canchasApi, equiposApi, torneosApi } from "@/lib/api";
+import { canchasApi, equiposApi, torneosApi, authApi } from "@/lib/api";
+import AppLayout from "@/components/AppLayout";
+
+interface UserProfile {
+  full_name: string;
+  role: string;
+  datos_adicionales?: Record<string, any> | null;
+}
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState({
-    canchas: 0,
-    equipos: 0,
-    torneos: 0,
-  });
+  const [stats, setStats] = useState({ canchas: 0, equipos: 0, torneos: 0 });
   const [loading, setLoading] = useState(true);
   const [isInvitado, setIsInvitado] = useState(false);
+  const [user, setUser] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsInvitado(localStorage.getItem('invitado') === 'true');
+    if (typeof window !== "undefined") {
+      setIsInvitado(localStorage.getItem("invitado") === "true");
     }
-    cargarStats();
+    cargarDatos();
   }, []);
 
-  async function cargarStats() {
+  async function cargarDatos() {
     try {
       const [canchas, equipos, torneos] = await Promise.all([
         canchasApi.listar(),
         equiposApi.listar(),
         torneosApi.listar(),
       ]);
-      setStats({
-        canchas: canchas.length,
-        equipos: equipos.length,
-        torneos: torneos.length,
-      });
+      setStats({ canchas: canchas.length, equipos: equipos.length, torneos: torneos.length });
+
+      // Intentar cargar perfil (puede fallar si es invitado)
+      try {
+        const perfil = await authApi.me();
+        setUser(perfil as UserProfile);
+      } catch {
+        // invitado, no hay sesión
+      }
     } catch (error) {
-      console.error("Error al cargar estadísticas:", error);
+      console.error("Error al cargar dashboard:", error);
     } finally {
       setLoading(false);
     }
   }
 
-  const cards = [
-    {
-      title: "Canchas",
-      count: stats.canchas,
-      link: "/canchas",
-      color: "bg-blue-50 border-blue-200",
-    },
-    {
-      title: "Equipos",
-      count: stats.equipos,
-      link: "/equipos",
-      color: "bg-green-50 border-green-200",
-    },
-    {
-      title: "Torneos",
-      count: stats.torneos,
-      link: "/torneos",
-      color: "bg-purple-50 border-purple-200",
-    },
-  ];
+  const isOrganizer = user?.role === "organizer" || user?.role === "admin";
+
+  const greeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Buenos días";
+    if (hour < 18) return "Buenas tardes";
+    return "Buenas noches";
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard</h1>
-        <p className="text-muted-foreground mb-8">Bienvenido a tu panel de control</p>
+    <AppLayout>
+      <div className="p-4 md:p-8 pb-8 max-w-5xl mx-auto">
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {cards.map((card) => (
+        {/* Saludo */}
+        <div className="mb-8">
+          <p className="text-muted-foreground text-sm">{greeting()},</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+            {user ? user.full_name.split(" ")[0] : "Bienvenido"}
+          </h1>
+          {user && (
+            <span className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 rounded-full bg-primary/15 text-primary text-xs font-medium capitalize">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+              {user.role === "organizer" ? "Organizador" :
+               user.role === "match_manager" ? "Árbitro" :
+               user.role === "player" ? "Jugador" :
+               user.role === "viewer" ? "Visualizador" : user.role}
+            </span>
+          )}
+        </div>
+
+        {/* Cards de Estadísticas */}
+        <div className="grid grid-cols-3 gap-3 md:gap-4 mb-8">
+          {[
+            { label: "Torneos", value: stats.torneos, icon: "🏆", href: "/torneos", color: "from-amber-500/10 to-amber-500/5 border-amber-500/20" },
+            { label: "Equipos", value: stats.equipos, icon: "🛡️", href: "/equipos", color: "from-blue-500/10 to-blue-500/5 border-blue-500/20" },
+            { label: "Canchas", value: stats.canchas, icon: "📍", href: "/canchas", color: "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20" },
+          ].map((card) => (
             <Link
-              key={card.title}
-              href={card.link}
-              className={`${card.color} border rounded-xl p-6 hover:shadow-lg transition-shadow`}
+              key={card.label}
+              href={card.href}
+              className={`bg-gradient-to-br ${card.color} border rounded-2xl p-4 md:p-5 hover:scale-[1.02] transition-transform`}
             >
-              <div className="text-4xl mb-2">{card.title.split(" ")[0]}</div>
-              <h3 className="text-lg font-semibold text-foreground">
-                {card.title}
-              </h3>
-              <p className="text-3xl font-bold text-foreground mt-2">
-                {card.count}
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">Ver todos →</p>
+              <div className="text-2xl mb-2">{card.icon}</div>
+              <p className="text-3xl font-bold text-foreground">{card.value}</p>
+              <p className="text-xs text-muted-foreground mt-1">{card.label}</p>
             </Link>
           ))}
         </div>
 
-        {!isInvitado ? (
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link
-              href="/canchas/nueva"
-              className="bg-primary hover:bg-primary-light text-primary-foreground text-center py-3 rounded-lg transition-colors"
-            >
-              + Nueva Cancha
-            </Link>
-            <Link
-              href="/equipos/nuevo"
-              className="bg-primary hover:bg-primary-light text-primary-foreground text-center py-3 rounded-lg transition-colors"
-            >
-              + Nuevo Equipo
-            </Link>
-            <Link
-              href="/torneos/nuevo"
-              className="bg-primary hover:bg-primary-light text-primary-foreground text-center py-3 rounded-lg transition-colors"
-            >
-              + Nuevo Torneo
-            </Link>
+        {/* Acciones rápidas — solo para organizadores */}
+        {isOrganizer && !isInvitado && (
+          <div className="mb-8">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Acciones Rápidas</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { href: "/torneos/nuevo", label: "+ Nuevo Torneo", sub: "Crea una liguilla o bracket" },
+                { href: "/partidos", label: "+ Nuevo Partido", sub: "Programa un partido" },
+                { href: "/canchas/nueva", label: "+ Nueva Cancha", sub: "Registra una cancha" },
+              ].map((action) => (
+                <Link
+                  key={action.href}
+                  href={action.href}
+                  className="bg-card border border-secondary hover:border-primary/50 rounded-2xl p-4 transition-all group"
+                >
+                  <p className="font-semibold text-foreground group-hover:text-primary transition-colors">{action.label}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{action.sub}</p>
+                </Link>
+              ))}
+            </div>
           </div>
-        ) : (
-          <div className="mt-8 p-6 rounded-xl border border-secondary bg-secondary/10 text-center space-y-3">
-            <p className="text-muted-foreground text-sm">
-              Estás explorando en modo **Invitado**. Inicia sesión o regístrate para poder crear y administrar torneos, equipos y canchas.
+        )}
+
+        {/* Últimos torneos */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Torneos Recientes</h2>
+            <Link href="/torneos" className="text-xs text-primary hover:underline">Ver todos</Link>
+          </div>
+          {stats.torneos === 0 ? (
+            <div className="bg-card border border-dashed border-secondary rounded-2xl p-8 text-center">
+              <div className="text-4xl mb-3">🏆</div>
+              <p className="text-muted-foreground text-sm">
+                {isInvitado
+                  ? "Inicia sesión para ver los torneos de tu comunidad."
+                  : isOrganizer
+                  ? "No tienes torneos aún. ¡Crea el primero!"
+                  : "Aún no hay torneos registrados."}
+              </p>
+              {isOrganizer && !isInvitado && (
+                <Link href="/torneos/nuevo" className="mt-4 inline-block px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-light transition-colors">
+                  Crear Torneo
+                </Link>
+              )}
+            </div>
+          ) : (
+            <Link href="/torneos" className="bg-card border border-secondary rounded-2xl p-4 flex items-center justify-between hover:border-primary/50 transition-colors">
+              <span className="text-foreground font-medium">Ver los {stats.torneos} torneos</span>
+              <span className="text-muted-foreground">→</span>
+            </Link>
+          )}
+        </div>
+
+        {/* Banner Invitado */}
+        {isInvitado && (
+          <div className="mt-8 p-5 rounded-2xl border border-primary/30 bg-primary/5 text-center">
+            <p className="text-sm text-muted-foreground mb-3">
+              Estás explorando como <strong>Invitado</strong>. Crea una cuenta para organizar torneos y equipos.
             </p>
             <div className="flex justify-center gap-4">
-              <Link href="/login" className="text-primary hover:underline font-bold text-sm">
+              <Link href="/login" className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-light transition-colors">
                 Iniciar Sesión
               </Link>
-              <span className="text-muted-foreground">|</span>
-              <Link href="/" className="text-primary hover:underline font-bold text-sm">
-                Crear Cuenta
+              <Link href="/" className="px-4 py-2 border border-secondary text-foreground rounded-lg text-sm hover:border-primary/50 transition-colors">
+                Registrarse
               </Link>
             </div>
           </div>
         )}
       </div>
-    </div>
+    </AppLayout>
   );
 }
