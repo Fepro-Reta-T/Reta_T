@@ -7,6 +7,7 @@ export interface Torneo {
   sport_id: string;
   organizer_id: string;
   creado_en?: string;
+  datos_adicionales?: Record<string, any>;
   // Relaciones
   sport?: {
     id: string;
@@ -19,10 +20,12 @@ export interface TorneoCrearPayload {
   nombre: string;
   categoria: string;
   sport_id: string;
+  datos_adicionales?: Record<string, any>;
 }
 
 export interface TorneoActualizarPayload {
   nombre?: string;
   categoria?: string;
   sport_id?: string;
+  datos_adicionales?: Record<string, any>;
 }
