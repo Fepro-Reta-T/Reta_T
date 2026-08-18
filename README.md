@@ -11,21 +11,22 @@ El repositorio sigue una arquitectura de monorepo gestionado por `pnpm` y conten
 ```
 reta-t/
 ├── apps/                  # Aplicaciones de Frontend
-│   ├── web-next/          # Portal principal (Next.js 16) - Administradores, ligas, estadísticas + MSW para desarrollo ágil
+│   ├── web-next/          # Portal principal (Next.js 16) - Organizadores, coaches, estadísticas
 │   └── registro-pwa/      # Captura de eventos en cancha (Vite PWA, offline-first)
-├── packages/              # Paquetes compartidos (¡Implementados!)
+├── packages/              # Paquetes compartidos
 │   ├── types/             # Tipos y esquemas de datos TypeScript compartidos (@reta-t/types)
 │   ├── api-client/        # Cliente HTTP unificado para consumir el backend (@reta-t/api-client)
 │   └── ui/                # Componentes de diseño compartidos (@reta-t/ui)
 ├── backend/               # Backend en Python
 │   └── api/               # API REST con FastAPI, SQLAlchemy y Alembic
-│       ├── alembic/       # Migraciones de base de datos (0001, 0002, 0003_add_telefono)
+│       ├── alembic/       # Migraciones de base de datos
+│       ├── tests/         # Tests de integración (pytest)
 │       └── app/
 │           ├── core/      # Configuración de base de datos y variables de entorno
-│           ├── models/    # Modelos ORM (SQLAlchemy) con soporte para roles y teléfono (OTP)
+│           ├── models/    # Modelos ORM (SQLAlchemy)
 │           ├── repositories/ # Capa de acceso a datos
-│           ├── routers/   # Endpoints de la API (health check, auth)
-│           ├── schemas/   # Esquemas de validación (Pydantic)
+│           ├── routers/   # Endpoints de la API
+│           ├── schemas/   # Esquemas de validación (Pydantic V2)
 │           └── services/  # Lógica de negocio centralizada
 ├── docker-compose.yml     # Orquestación local para PostgreSQL y la API FastAPI
 ├── package.json           # Scripts de control del monorepo (pnpm)
@@ -38,84 +39,101 @@ reta-t/
 
 ## 2. Tecnologías y Estado de Implementación
 
-El proyecto ha completado la **Fase 1 (Fundación)** e integraciones técnicas clave para soportar el **Paralelismo Ágil** en los siguientes sprints:
-
 ### Backend (FastAPI & PostgreSQL)
-* **Python 3.12-slim** y **FastAPI**: Lógica y endpoints REST.
+
+* **Python 3.13** y **FastAPI**: Lógica y endpoints REST.
 * **SQLAlchemy 2.0** y **asyncpg**: ORM y driver asíncrono para PostgreSQL.
-* **Alembic**: Migraciones de base de datos (`0001_create_users_table`, `0002_update_role_enum`, `0003_add_telefono`).
-* **Modelo `User`**: Incluye soporte para el campo `telefono` (único e indexado), dejando lista la estructura para el flujo de verificación OTP.
+* **Alembic**: Migraciones de base de datos versionadas.
+* **Pydantic V2**: Schemas de validación con `ConfigDict` (migración completa desde V1).
 * **Endpoints implementados**:
-  * `/health` y `/health/db`: Validación de estado y conectividad DB.
-  * `/auth/register`, `/auth/login`, `/auth/me`: Autenticación con JWT.
+  * `/health` y `/health/db`: Validación de estado y conectividad.
+  * `/auth/register`, `/auth/login`, `/auth/me`, `/auth/me/onboarding`: Autenticación JWT y perfiles.
+  * `/sports/`: Catálogo de deportes disponibles.
+  * `/municipios/`: Gestión de municipios (solo `ADMIN`).
+  * `/canchas/`: Gestión de canchas deportivas (CRUD, `ADMIN` u `ORGANIZER`).
+  * `/torneos/`: Gestión de torneos con categorías y soporte de inscripciones.
+  * `/equipos/`: Gestión de equipos y plantillas.
+    * `POST /equipos/` — cualquier usuario autenticado puede crear.
+    * `PUT` / `DELETE` — requieren rol `ADMIN` u `ORGANIZER`.
+    * Validación de `sport_id` referenciado contra tabla `sports`.
+* **Roles** (`RoleEnum`): `ADMIN`, `ORGANIZER`, `MATCH_MANAGER`, `PLAYER`, `VIEWER`.
+* **Tests**: 21 tests de integración pasando (auth, canchas, municipios, equipos, roles).
 
-### Paquetes Compartidos y Mocks (Monorepo)
-* **`@reta-t/types`**: Define en TypeScript los roles (`Role` enum), esquemas de usuario y tipos compartidos.
-* **`@reta-t/api-client`**: Cliente HTTP unificado usando la Fetch API nativa.
-* **`@reta-t/ui`**: Componentes de interfaz comunes (botones de alto contraste para PWA, etc.).
-* **MSW (Mock Service Worker)**: Instalado y configurado en `apps/web-next`. Permite al equipo de frontend maquetar las pantallas del Sprint 3 simulando respuestas de la API sin bloquearse esperando al backend.
+### Frontend Portal (Next.js)
 
-### Frontend (Next.js & Vite PWA)
-* **Web App (Next.js)** en [apps/web-next](file:///c:/Users/Nestor/Documents/Proyecto/Reta_T/apps/web-next): Next.js 16 (App Router), React 19, Tailwind CSS v4 y MSW Provider configurado para entorno de desarrollo.
-* **Registro PWA (Vite)** en [apps/registro-pwa](file:///c:/Users/Nestor/Documents/Proyecto/Reta_T/apps/registro-pwa): Vite + React 19 con soporte offline-first.
+* **Next.js 16** (App Router), React 19, Turbopack.
+* **Pantallas implementadas**:
+  * Landing page, Login, Registro con selección de rol.
+  * Onboarding post-registro.
+  * **Dashboard del Coach**: Equipos Dirigidos + Torneos Activos en sección superior, exploración de comunidad (feed, canchas, equipos).
+  * **Torneos**: listado en cards visuales con imagen de portada por deporte, vista de detalle con fixture y encuentros, inscripción de equipos.
+  * **Equipos**: directorio con degradado del color oficial y disciplina visible, registro en 5 pasos (nombre → logo PNG → color → rama → deporte), gestión de plantilla con posiciones adaptadas por deporte.
+  * **Plantilla por deporte** — posiciones con colores estándar:
+    * Fútbol / Futsal: `POR` Naranja · `DEF` Amarillo · `MED` Verde · `DEL` Azul · `EXT` Azul claro
+    * Basketball: `BASE` · `ESC` · `ALA` · `APO` · `PIV`
+    * Voleibol: `COL` · `REM` · `CENT` · `LIB` · `OP`
+    * Béisbol / Softball: `LAN` · `REC` · `INF` · `OUT` · `BD`
+  * **Canchas**: listado y alta de canchas con municipio.
+  * **Partidos**: listado de encuentros.
+
+### Paquetes Compartidos
+
+* **`@reta-t/types`**: Tipos TypeScript de `Equipo`, `Torneo`, `Cancha`, `User`, roles.
+* **`@reta-t/api-client`**: Cliente HTTP unificado (Fetch API).
+* **`@reta-t/ui`**: Componentes de diseño compartidos.
 
 ---
 
 ## 3. Principios de Arquitectura Obligatorios
 
-1. **Paralelismo Backend / Frontend:**
-   * El desarrollo del Sprint 2 (Base de Datos) y Sprint 3 (Pantallas) se realiza de forma **100% paralela**. 
-   * El frontend usa MSW (`src/mocks/handlers.ts`) para simular la API mientras el backend prepara las migraciones. Al terminar, simplemente se apaga MSW.
-2. **Geocodificación Asíncrona en el Cliente:**
-   * Nunca bloquear endpoints de FastAPI con llamadas síncronas a APIs de terceros.
-   * La geocodificación (Google Maps lat/lng a Municipio) debe resolverse en el frontend (Next.js) antes de enviar el formulario a FastAPI.
-3. **Event Sourcing y Módulos Offline:**
-   * Los eventos de cancha generados en la PWA incluyen `client_event_id` (UUID para idempotencia) y **`client_timestamp`** (fuente de verdad absoluta para ordenar el historial independientemente de cuándo se recupere la conexión a internet).
-4. **Optimización de Consultas JSONB:**
-   * El modelo genérico `Sport -> EventType -> MatchEvent` exige **índices GIN** en PostgreSQL sobre las llaves más consultadas (`player_id`, `minute`) para garantizar estadísticas ultrarrápidas.
+1. **Responsabilidad única por app**: Next.js administra · PWA registra · FastAPI procesa. La complejidad vive siempre en el backend.
+2. **Modelo genérico de eventos**: `Sport → EventType → MatchEvent` — nunca tablas específicas por deporte.
+3. **Geocodificación asíncrona en el cliente**: Nunca bloquear endpoints FastAPI con llamadas síncronas a APIs de terceros.
+4. **Offline-first en la PWA**: Registrar → guardar local → sincronizar → confirmar → eliminar cola. Cada evento tiene `client_event_id` único para idempotencia.
+5. **Permisos por rol estático**: `require_role(...)` — sin lógica de ownership compleja en el backend para el MVP.
 
 ---
 
 ## 4. Requisitos Previos
 
-Asegúrate de tener instalado en tu máquina local:
 * [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-* [Node.js](https://nodejs.org/) (versión LTS recomendada)
-* [pnpm](https://pnpm.io/) (versión 9.x recomendada)
+* [Node.js](https://nodejs.org/) (LTS recomendado)
+* [pnpm](https://pnpm.io/) (versión 9.x)
+* [uv](https://github.com/astral-sh/uv) — gestor de entornos Python (para tests locales sin Docker)
 
 ---
 
 ## 5. Guía de Inicio Rápido (Local)
 
-### Paso 1: Configurar Variables de Entorno
-Copia el archivo de ejemplo para crear tu configuración local:
+### Paso 1: Variables de entorno
 ```bash
 cp .env.example .env
 ```
 
-### Paso 2: Levantar el Backend (API y Base de Datos)
-Usa Docker Compose para construir y levantar los contenedores en segundo plano:
+### Paso 2: Levantar Backend (API + Base de Datos)
 ```bash
 docker-compose up -d --build
 ```
-Esto levantará:
-* **Base de datos (PostgreSQL 16)** en `localhost:5432`
-* **Backend API (FastAPI)** en `localhost:8000`
+* **PostgreSQL 16** en `localhost:5432`
+* **FastAPI** en `localhost:8000` — Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
 
-Acceso a documentación:
-* Documentación interactiva (Swagger UI): [http://localhost:8000/docs](http://localhost:8000/docs)
-
-### Paso 3: Instalar dependencias y Construir Paquetes Compartidos
+### Paso 3: Instalar dependencias y construir paquetes
 ```bash
 pnpm install
 pnpm --filter "@reta-t/*" build
 ```
 
-### Paso 4: Levantar Frontends
-* **Next.js Web App**: `pnpm dev:web` (correrá en `http://localhost:3000`)
-* **Registro PWA**: `pnpm dev:pwa` (correrá en `http://localhost:5173`)
+### Paso 4: Levantar frontends
+```bash
+pnpm dev:web   # http://localhost:3000
+pnpm dev:pwa   # http://localhost:5173
+```
 
-*(Nota: En modo desarrollo local, Next.js cargará MSW en el navegador mostrando en consola `[MSW] Mocking enabled`, permitiendo probar interfaces de usuario sin depender de endpoints activos).*
+### Paso 5: Correr tests del backend
+```bash
+cd backend/api
+uv run pytest tests/ -v
+```
 
 ---
 
@@ -123,5 +141,10 @@ pnpm --filter "@reta-t/*" build
 
 Este repositorio incluye configuraciones detalladas para asistentes de IA como **Antigravity**, **Cursor** o **Claude Code**:
 
-* **[AGENTS.md](file:///c:/Users/Nestor/Documents/Proyecto/Reta_T/AGENTS.md)**: Reglas compartidas del monorepo, principios de diseño y roadmap de fases.
-* **`.agents/skills/`**: Habilidades cargadas bajo demanda por agentes de IA para tareas complejas (`match-event-engine`, `pwa-offline-sync`, `api-endpoint-scaffold`, `code-review-checklist`).
+* **[AGENTS.md](AGENTS.md)**: Reglas compartidas del monorepo — arquitectura, stack, roles, roadmap y modelo de datos genérico.
+* **[GEMINI.md](GEMINI.md)**: Overrides específicos de Antigravity — modo de trabajo, turbo mode, diseño.
+* **`.agents/skills/`**: Habilidades cargadas bajo demanda:
+  * `match-event-engine` — antes de crear/modificar `EventType` o `MatchEvent`
+  * `pwa-offline-sync` — antes de tocar la cola offline de la PWA
+  * `api-endpoint-scaffold` — al crear un nuevo endpoint FastAPI
+  * `code-review-checklist` — al revisar un PR
