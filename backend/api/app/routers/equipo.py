@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import List
 from app.core.database import get_db
-from app.core.deps import require_role
+from app.core.deps import get_current_user, require_role
 from app.models.user import User, RoleEnum
 from app.schemas.equipo import EquipoCreate, EquipoUpdate, EquipoResponse
 from app.services.equipo_service import EquipoService
@@ -18,19 +18,20 @@ def get_equipo_service(db: AsyncSession = Depends(get_db)) -> EquipoService:
 @router.post("/", response_model=EquipoResponse, status_code=status.HTTP_201_CREATED)
 async def crear_equipo(
     datos: EquipoCreate,
-    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
+    current_user: User = Depends(get_current_user),
     service: EquipoService = Depends(get_equipo_service)
 ):
-    return await service.crear(datos)
+    try:
+        return await service.crear(datos)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
-# ✅ CORREGIDO: Agregado require_role
 @router.get("/", response_model=List[EquipoResponse])
 async def listar_equipos(
     service: EquipoService = Depends(get_equipo_service)
 ):
     return await service.listar()
 
-# ✅ CORREGIDO: Agregado require_role
 @router.get("/{equipo_id}", response_model=EquipoResponse)
 async def obtener_equipo(
     equipo_id: UUID,

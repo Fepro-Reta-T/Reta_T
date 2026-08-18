@@ -10,20 +10,21 @@ export default function TorneosPage() {
   const [torneos, setTorneos] = useState<Torneo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [isInvitado] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('invitado') === 'true';
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("invitado") === "true";
     }
     return false;
   });
 
   const [isOrganizer] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const userStr = localStorage.getItem('user');
+    if (typeof window !== "undefined") {
+      const userStr = localStorage.getItem("user");
       if (userStr) {
         try {
           const u = JSON.parse(userStr);
-          return u.role === 'organizer' || u.role === 'admin';
+          return u.role === "organizer" || u.role === "admin";
         } catch {}
       }
     }
@@ -51,7 +52,7 @@ export default function TorneosPage() {
     if (!confirm("¿Estás seguro de eliminar este torneo?")) return;
     try {
       await torneosApi.eliminar(id);
-      setTorneos(torneos.filter(t => t.id !== id));
+      setTorneos(torneos.filter((t) => t.id !== id));
     } catch (err) {
       alert("Error al eliminar el torneo");
       console.error(err);
@@ -60,90 +61,126 @@ export default function TorneosPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
-      </div>
+      <AppLayout>
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent" />
+        </div>
+      </AppLayout>
     );
   }
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-8 max-w-5xl mx-auto">
+      <div className="p-4 md:p-8 pb-28 max-w-5xl mx-auto relative min-h-screen">
+        
+        {/* Encabezado Principal */}
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-foreground">Torneos</h1>
-          {isOrganizer && !isInvitado && (
-            <Link
-              href="/torneos/nuevo"
-              className="bg-primary hover:bg-primary-light text-primary-foreground px-4 py-2 rounded-lg transition-colors"
-            >
-              + Nuevo Torneo
-            </Link>
-          )}
+          <div>
+            <h1 className="text-3xl font-black text-foreground tracking-tight">
+              Torneos
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Explora las competencias y liguillas activas de la comunidad.
+            </p>
+          </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-600 mb-4">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-red-600 text-sm mb-4">
             {error}
           </div>
         )}
 
         {torneos.length === 0 ? (
-          <div className="text-center py-12 bg-card rounded-xl border border-secondary">
-            <p className="text-muted-foreground text-lg">No hay torneos registrados</p>
-            {isOrganizer && !isInvitado && (
-              <Link
-                href="/torneos/nuevo"
-                className="inline-block mt-4 text-primary hover:underline"
-              >
-                Crear el primer torneo →
-              </Link>
-            )}
+          <div className="text-center py-16 bg-card rounded-3xl border border-secondary p-8 space-y-3">
+            <h3 className="text-lg font-bold text-foreground">
+              No hay torneos registrados
+            </h3>
+            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+              Aún no existen competencias publicadas en esta zona.
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {torneos.map((torneo) => (
-              <div
-                key={torneo.id}
-                className="bg-card rounded-xl border border-secondary p-6 hover:shadow-lg transition-shadow"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <Link href={`/torneos/${torneo.id}`}>
-                      <h3 className="text-lg font-semibold text-foreground hover:text-primary transition-colors">
-                        {torneo.nombre}
-                      </h3>
-                    </Link>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Categoría: {torneo.categoria}
-                    </p>
-                    {torneo.sport && (
-                      <p className="text-sm text-muted-foreground">
-                        Deporte: {torneo.sport.nombre}
-                      </p>
-                    )}
-                  </div>
-                  {isOrganizer && !isInvitado && (
-                    <button
-                      onClick={() => eliminarTorneo(torneo.id)}
-                      className="text-sm text-red-600 hover:underline"
-                    >
-                      Eliminar
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center justify-between border-t border-secondary mt-4 pt-3 text-sm">
-                  <Link href={`/torneos/${torneo.id}`} className="text-primary hover:underline">
-                    Ver detalles
-                  </Link>
+            {torneos.map((torneo) => {
+              const portada = torneo.datos_adicionales?.imagen_portada || "/Futbol 7.jpg";
 
-                  {!isInvitado && (
-                    <Link href={`/torneos/${torneo.id}/inscribir`} className="text-primary hover:underline">
-                      Inscribir Equipo
-                    </Link>
-                  )}
+              return (
+                <div
+                  key={torneo.id}
+                  className="bg-card rounded-3xl border border-secondary overflow-hidden hover:shadow-xl transition-all flex flex-col justify-between group hover:border-primary/40"
+                >
+                  <div className="relative h-40 w-full overflow-hidden bg-secondary/30">
+                    <img
+                      src={portada}
+                      alt={torneo.nombre}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+
+                    <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[10px] uppercase font-bold text-white tracking-wider border border-white/20 capitalize">
+                      {torneo.categoria}
+                    </div>
+                  </div>
+
+                  <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <Link href={`/torneos/${torneo.id}`}>
+                          <h3 className="text-lg font-bold text-foreground hover:text-primary transition-colors leading-tight">
+                            {torneo.nombre}
+                          </h3>
+                        </Link>
+                        {isOrganizer && !isInvitado && (
+                          <button
+                            onClick={() => eliminarTorneo(torneo.id)}
+                            className="text-xs text-red-500 hover:text-red-700 hover:underline font-medium"
+                          >
+                            Eliminar
+                          </button>
+                        )}
+                      </div>
+
+                      {torneo.sport && (
+                        <span className="text-[10px] font-extrabold text-primary uppercase tracking-widest bg-primary/10 px-2.5 py-0.5 rounded-md border border-primary/20 inline-block">
+                          {torneo.sport.nombre}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-secondary pt-3 text-xs font-bold">
+                      <Link
+                        href={`/torneos/${torneo.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        Ver Detalles →
+                      </Link>
+
+                      {!isInvitado && (
+                        <Link
+                          href={`/torneos/${torneo.id}/inscribir`}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          + Inscribir Equipo
+                        </Link>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
+          </div>
+        )}
+
+        {/* Botón Flotante (FAB) de Crear Torneo — Abajo al Medio (Elevado del Nav) */}
+        {isOrganizer && !isInvitado && (
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40">
+            <Link
+              href="/torneos/nuevo"
+              className="px-6 py-3.5 bg-primary hover:bg-primary-light text-primary-foreground font-black text-sm uppercase tracking-wider rounded-full shadow-2xl hover:scale-105 transition-all flex items-center justify-center border border-white/20 backdrop-blur-md"
+            >
+              + Crear Torneo
+            </Link>
           </div>
         )}
       </div>

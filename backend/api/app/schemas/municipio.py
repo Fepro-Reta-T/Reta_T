@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from uuid import UUID
 from typing import Optional
 
@@ -16,5 +16,4 @@ class MunicipioCreate(MunicipioBase):
 class MunicipioResponse(MunicipioBase):
     id: UUID
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
