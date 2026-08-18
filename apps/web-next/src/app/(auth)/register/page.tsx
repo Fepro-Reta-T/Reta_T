@@ -35,7 +35,11 @@ export default function RegisterPage() {
         password: formData.password,
       });
       setAuthToken(token.access_token);
-      
+      localStorage.removeItem("invitado");
+
+      const user = await authApi.me();
+      localStorage.setItem("user", JSON.stringify(user));
+
       router.push("/onboarding");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al registrar");

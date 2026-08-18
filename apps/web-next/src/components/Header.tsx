@@ -1,24 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function Header() {
   const router = useRouter();
-  const [user, setUser] = useState<{ full_name: string; email: string } | null>(null);
-  const [isInvitado, setIsInvitado] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-
-  useEffect(() => {
+  const [user] = useState<{ full_name: string; email: string } | null>(() => {
     if (typeof window !== "undefined") {
       const userStr = localStorage.getItem("user");
-      if (userStr) {
-        setUser(JSON.parse(userStr));
-      }
-      setIsInvitado(localStorage.getItem("invitado") === "true");
+      return userStr ? JSON.parse(userStr) : null;
     }
-  }, []);
+    return null;
+  });
+  
+  const [isInvitado] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("invitado") === "true";
+    }
+    return false;
+  });
+  
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem("auth_token");
@@ -41,6 +44,7 @@ export default function Header() {
   return (
     <header className="w-full bg-card/50 backdrop-blur-md border-b border-secondary px-6 py-4 flex items-center justify-between sticky top-0 z-50">
       <Link href="/dashboard" className="flex items-center group">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img 
           src="/logo_completo.svg" 
           alt="Reta-T" 

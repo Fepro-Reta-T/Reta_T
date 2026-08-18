@@ -10,18 +10,28 @@ export default function TorneosPage() {
   const [torneos, setTorneos] = useState<Torneo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isInvitado, setIsInvitado] = useState(false);
-
-  useEffect(() => {
+  const [isInvitado] = useState(() => {
     if (typeof window !== 'undefined') {
-      setIsInvitado(localStorage.getItem('invitado') === 'true');
+      return localStorage.getItem('invitado') === 'true';
     }
-    cargarTorneos();
-  }, []);
+    return false;
+  });
+
+  const [isOrganizer] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const userStr = localStorage.getItem('user');
+      if (userStr) {
+        try {
+          const u = JSON.parse(userStr);
+          return u.role === 'organizer' || u.role === 'admin';
+        } catch {}
+      }
+    }
+    return false;
+  });
 
   async function cargarTorneos() {
     try {
-      setLoading(true);
       const data = await torneosApi.listar();
       setTorneos(data);
       setError(null);
@@ -32,6 +42,10 @@ export default function TorneosPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    cargarTorneos();
+  }, []);
 
   async function eliminarTorneo(id: string) {
     if (!confirm("¿Estás seguro de eliminar este torneo?")) return;
@@ -57,7 +71,7 @@ export default function TorneosPage() {
       <div className="p-4 md:p-8 max-w-5xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-foreground">Torneos</h1>
-          {!isInvitado && (
+          {isOrganizer && !isInvitado && (
             <Link
               href="/torneos/nuevo"
               className="bg-primary hover:bg-primary-light text-primary-foreground px-4 py-2 rounded-lg transition-colors"
@@ -76,7 +90,7 @@ export default function TorneosPage() {
         {torneos.length === 0 ? (
           <div className="text-center py-12 bg-card rounded-xl border border-secondary">
             <p className="text-muted-foreground text-lg">No hay torneos registrados</p>
-            {!isInvitado && (
+            {isOrganizer && !isInvitado && (
               <Link
                 href="/torneos/nuevo"
                 className="inline-block mt-4 text-primary hover:underline"
@@ -108,7 +122,7 @@ export default function TorneosPage() {
                       </p>
                     )}
                   </div>
-                  {!isInvitado && (
+                  {isOrganizer && !isInvitado && (
                     <button
                       onClick={() => eliminarTorneo(torneo.id)}
                       className="text-sm text-red-600 hover:underline"

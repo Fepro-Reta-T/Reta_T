@@ -22,13 +22,8 @@ export default function NuevoTorneoPage() {
     sport_id: "",
   });
 
-  useEffect(() => {
-    cargarSports();
-  }, []);
-
   async function cargarSports() {
     try {
-      setLoadingSports(true);
       const response = await apiClient.get<Sport[]>('/sports');
       setSports(response);
       setError(null);
@@ -43,6 +38,10 @@ export default function NuevoTorneoPage() {
       setLoadingSports(false);
     }
   }
+
+  useEffect(() => {
+    cargarSports();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

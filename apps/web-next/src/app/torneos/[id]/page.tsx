@@ -17,30 +17,47 @@ export default function DetalleTorneoPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [isInvitado] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("invitado") === "true";
+    }
+    return false;
+  });
+
+  const [isOrganizer] = useState(() => {
+    if (typeof window !== "undefined") {
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        try {
+          const u = JSON.parse(userStr);
+          return u.role === "organizer" || u.role === "admin";
+        } catch {}
+      }
+    }
+    return false;
+  });
+
   useEffect(() => {
+    async function cargarDatos() {
+      try {
+        const torneoData = await torneosApi.obtener(torneoId);
+        const equiposInscritos = await inscripcionesApi.listarEquiposInscritos(torneoId);
+        
+        setTorneo(torneoData);
+        setEquipos(equiposInscritos);
+        setError(null);
+      } catch (err) {
+        setError("Error al cargar los datos");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
     if (torneoId) {
       cargarDatos();
     }
   }, [torneoId]);
-
-  async function cargarDatos() {
-    try {
-      setLoading(true);
-      
-      const torneoData = await torneosApi.obtener(torneoId);
-      
-      const equiposInscritos = await inscripcionesApi.listarEquiposInscritos(torneoId);
-      
-      setTorneo(torneoData);
-      setEquipos(equiposInscritos);
-      setError(null);
-    } catch (err) {
-      setError("Error al cargar los datos");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function eliminarTorneo() {
     if (!confirm("¿Eliminar este torneo?")) return;
@@ -49,6 +66,7 @@ export default function DetalleTorneoPage() {
       router.push("/torneos");
     } catch (err) {
       alert("Error al eliminar");
+      console.error(err);
     }
   }
 
@@ -92,21 +110,34 @@ export default function DetalleTorneoPage() {
                 ID: {torneo.id}
               </p>
             </div>
-            <button
-              onClick={eliminarTorneo}
-              className="text-red-600 hover:text-red-800 text-sm"
-            >
-              Eliminar
-            </button>
+            {isOrganizer && !isInvitado && (
+              <button
+                onClick={eliminarTorneo}
+                className="text-red-600 hover:text-red-800 text-sm font-medium"
+              >
+                Eliminar
+              </button>
+            )}
           </div>
 
-          <div className="mt-4">
-            <Link
-              href={`/torneos/${torneo.id}/inscribir`}
-              className="inline-block px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition"
-            >
-              + Inscribir Equipo
-            </Link>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {!isInvitado && (
+              <Link
+                href={`/torneos/${torneo.id}/inscribir`}
+                className="inline-block px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-light transition"
+              >
+                + Inscribir Equipo
+              </Link>
+            )}
+
+            {isOrganizer && !isInvitado && (
+              <Link
+                href={`/partidos/nuevo?torneo_id=${torneo.id}`}
+                className="inline-block px-4 py-2 border border-secondary text-foreground rounded-lg text-sm font-medium hover:border-primary/50 transition"
+              >
+                📅 Programar Partido
+              </Link>
+            )}
           </div>
 
           <div className="mt-6 pt-6 border-t border-secondary">

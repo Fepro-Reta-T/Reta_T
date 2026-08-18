@@ -22,8 +22,10 @@ export default function LoginPage() {
     try {
       const token = await authApi.loginAndSetToken(formData);
       setAuthToken(token.access_token);
+      localStorage.removeItem("invitado");
       
       const user = await authApi.me();
+      localStorage.setItem("user", JSON.stringify(user));
       if (!user.datos_adicionales?.onboarding_completed) {
         router.push("/onboarding");
       } else {

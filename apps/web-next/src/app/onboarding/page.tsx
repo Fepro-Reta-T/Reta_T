@@ -23,11 +23,18 @@ const roleOptions: RoleOption[] = [
   { id: "viewer", title: "Fan / Espectador", description: "Sigo a mis equipos y torneos favoritos", icon: "👀" },
 ];
 
-const visualSports = [
-  { id: "futbol", name: "Fútbol", icon: "⚽" },
-  { id: "futbol7", name: "Fútbol 7", icon: "🏟️" },
-  { id: "basketball", name: "Basketball", icon: "🏀" },
-  { id: "volleyball", name: "Voleibol", icon: "🏐" },
+interface SportOption {
+  id: string;
+  name: string;
+  icon: string;
+  image?: string;
+}
+
+const visualSports: SportOption[] = [
+  { id: "futbol", name: "Fútbol", icon: "⚽", image: "/Futbol.jpg" },
+  { id: "futbol7", name: "Fútbol 7", icon: "🏟️", image: "/Futbol 7.jpg" },
+  { id: "basketball", name: "Basketball", icon: "🏀", image: "/Basket.jpg" },
+  { id: "volleyball", name: "Voleibol", icon: "🏐", image: "/Volley.jpg" },
 ];
 
 const visualTeams = [
@@ -71,7 +78,7 @@ export default function OnboardingPage() {
         isCoach = mapped.is_coach;
       }
 
-      await authApi.updateOnboarding({
+      const updatedUser = await authApi.updateOnboarding({
         role: finalRole,
         datos_adicionales: {
           onboarding_completed: true,
@@ -80,6 +87,7 @@ export default function OnboardingPage() {
           favorite_teams: selectedTeams,
         },
       });
+      localStorage.setItem("user", JSON.stringify(updatedUser));
       router.push("/dashboard");
     } catch (error) {
       console.error("Error al guardar onboarding:", error);
@@ -175,20 +183,59 @@ export default function OnboardingPage() {
             <p className="text-muted-foreground text-center mb-8">Selecciona los deportes que más te interesan para personalizar tu experiencia.</p>
             
             <div className="grid grid-cols-2 gap-4">
-              {visualSports.map((sport) => (
-                <button
-                  key={sport.id}
-                  onClick={() => toggleSport(sport.id)}
-                  className={`p-6 border rounded-xl flex flex-col items-center justify-center transition-all ${
-                    selectedSports.includes(sport.id)
-                      ? "border-primary bg-primary/10 ring-2 ring-primary/20"
-                      : "border-secondary hover:border-primary/50"
-                  }`}
-                >
-                  <span className="text-4xl mb-2">{sport.icon}</span>
-                  <span className="font-medium text-foreground">{sport.name}</span>
-                </button>
-              ))}
+              {visualSports.map((sport) => {
+                const isSelected = selectedSports.includes(sport.id);
+                return (
+                  <button
+                    key={sport.id}
+                    onClick={() => toggleSport(sport.id)}
+                    className={`relative group overflow-hidden h-36 rounded-xl border flex flex-col items-center justify-center transition-all duration-300 ${
+                      isSelected
+                        ? "border-primary ring-2 ring-primary/50 scale-[1.02] shadow-lg shadow-primary/20"
+                        : "border-secondary hover:border-primary/50 hover:scale-[1.01]"
+                    }`}
+                  >
+                    {sport.image ? (
+                      <>
+                        <img
+                          src={sport.image}
+                          alt={sport.name}
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                        <div
+                          className={`absolute inset-0 transition-opacity duration-300 ${
+                            isSelected
+                              ? "bg-gradient-to-t from-black/90 via-black/60 to-primary/40"
+                              : "bg-gradient-to-t from-black/85 via-black/50 to-black/30 group-hover:from-black/70"
+                          }`}
+                        />
+                      </>
+                    ) : (
+                      <div
+                        className={`absolute inset-0 transition-colors ${
+                          isSelected
+                            ? "bg-gradient-to-br from-primary/30 to-secondary"
+                            : "bg-secondary/40 group-hover:bg-secondary/70"
+                        }`}
+                      />
+                    )}
+
+                    <div className="relative z-10 flex flex-col items-center justify-center p-2 text-center">
+                      <span className="font-bold text-white drop-shadow-md text-lg tracking-wide">
+                        {sport.name}
+                      </span>
+                    </div>
+
+                    {isSelected && (
+                      <div className="absolute top-2 right-2 z-10 bg-primary text-white rounded-full p-1.5 shadow-md animate-in zoom-in-50 duration-200">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="mt-8 flex justify-between">
