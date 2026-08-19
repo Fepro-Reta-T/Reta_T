@@ -78,7 +78,6 @@ export default function DetalleTorneoPage() {
   const [modalCalendarioOpen, setModalCalendarioOpen] = useState(false);
   const [modalPosicionesOpen, setModalPosicionesOpen] = useState(false);
   const [modalGoleoOpen, setModalGoleoOpen] = useState(false);
-  const [modalBracketOpen, setModalBracketOpen] = useState(false);
   const [modalEliminarOpen, setModalEliminarOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -217,21 +216,6 @@ export default function DetalleTorneoPage() {
                   {torneo.sport.nombre}
                 </span>
               )}
-              {torneo.datos_adicionales?.estructura?.tipo_formato === "liga" && (
-                <span className="text-xs uppercase tracking-widest font-extrabold text-blue-400 bg-blue-500/15 backdrop-blur-md px-3 py-1 rounded-full border border-blue-500/30 shadow-sm">
-                  Liga Regular {torneo.datos_adicionales.estructura.ida_y_vuelta ? "(Ida y Vuelta)" : "(Ida Única)"}
-                </span>
-              )}
-              {torneo.datos_adicionales?.estructura?.tipo_formato === "eliminacion_directa" && (
-                <span className="text-xs uppercase tracking-widest font-extrabold text-amber-400 bg-amber-500/15 backdrop-blur-md px-3 py-1 rounded-full border border-amber-500/30 shadow-sm">
-                  Eliminación Directa (Knockout)
-                </span>
-              )}
-              {torneo.datos_adicionales?.estructura?.tipo_formato === "liga_playoffs" && (
-                <span className="text-xs uppercase tracking-widest font-extrabold text-emerald-400 bg-emerald-500/15 backdrop-blur-md px-3 py-1 rounded-full border border-emerald-500/30 shadow-sm">
-                  Liga con Liguilla (Top {torneo.datos_adicionales.estructura.clasificados_playoffs || 4})
-                </span>
-              )}
             </div>
 
             <h1 className="text-2xl sm:text-4xl font-black text-foreground tracking-tight leading-tight drop-shadow-sm">
@@ -250,14 +234,6 @@ export default function DetalleTorneoPage() {
               <span>+ Inscribir Equipo</span>
             </Link>
           )}
-
-          <button
-            type="button"
-            onClick={() => setModalBracketOpen(true)}
-            className="flex-1 sm:flex-none min-h-[44px] px-6 py-3 bg-card hover:bg-secondary text-foreground border border-secondary font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-sm text-center flex items-center justify-center gap-2"
-          >
-            <span>Ver Cuadro (Bracket)</span>
-          </button>
 
           {isOrganizer && !isInvitado && (
             <Link
@@ -900,175 +876,7 @@ export default function DetalleTorneoPage() {
           </div>
         )}
 
-        {/* 5. MODAL DE VISUALIZACIÓN DEL BRACKET / CUADRO DE ELIMINACIÓN */}
-        {modalBracketOpen && (
-          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-card rounded-3xl border border-secondary max-w-4xl w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
-              <div className="flex justify-between items-center pb-3 border-b border-secondary flex-shrink-0">
-                <div className="flex items-center gap-3">
-                  <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 font-black text-xs border border-emerald-500/20 uppercase tracking-wider">
-                    Fase Final
-                  </span>
-                  <div>
-                    <h3 className="text-xl font-black text-foreground tracking-tight">
-                      Cuadro de Llaves (Bracket)
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Visualización oficial del torneo {torneo.nombre}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setModalBracketOpen(false)}
-                  className="text-muted-foreground hover:text-foreground text-xl font-bold p-1"
-                >
-                  ✕
-                </button>
-              </div>
-
-              {/* RENDERIZADO VISUAL DEL BRACKET TIPO ÁRBOL CON SCROLL HORIZONTAL */}
-              <div className="overflow-x-auto py-6 px-2 flex-1">
-                <div className="min-w-[640px] flex items-center justify-between gap-8 relative">
-                  
-                  {/* RONDA 1: SEMIFINALES */}
-                  <div className="flex-1 space-y-8 relative z-10">
-                    <div className="text-center mb-2">
-                      <span className="text-[10px] uppercase font-black tracking-widest text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                        Semifinales
-                      </span>
-                    </div>
-
-                    {/* LLAVE 1 */}
-                    <div className="bg-background rounded-2xl border border-secondary p-3 shadow-md space-y-2 relative group hover:border-primary/40 transition-colors">
-                      <div className="flex items-center justify-between gap-3 bg-card p-2 rounded-xl border border-secondary">
-                        <div className="flex items-center gap-2 truncate">
-                          <div className="w-6 h-6 rounded-lg bg-red-600 text-white font-black text-[10px] flex items-center justify-center flex-shrink-0">
-                            T
-                          </div>
-                          <span className="text-xs font-bold text-foreground truncate">
-                            {equipos[0]?.nombre || "Toros FC"}
-                          </span>
-                        </div>
-                        <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                          3
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3 bg-card p-2 rounded-xl border border-secondary opacity-75">
-                        <div className="flex items-center gap-2 truncate">
-                          <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black text-[10px] flex items-center justify-center flex-shrink-0">
-                            R
-                          </div>
-                          <span className="text-xs font-bold text-foreground truncate">
-                            {equipos[1]?.nombre || "Rayos FC"}
-                          </span>
-                        </div>
-                        <span className="text-xs font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded">
-                          1
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* LLAVE 2 */}
-                    <div className="bg-background rounded-2xl border border-secondary p-3 shadow-md space-y-2 relative group hover:border-primary/40 transition-colors">
-                      <div className="flex items-center justify-between gap-3 bg-card p-2 rounded-xl border border-secondary">
-                        <div className="flex items-center gap-2 truncate">
-                          <div className="w-6 h-6 rounded-lg bg-amber-600 text-white font-black text-[10px] flex items-center justify-center flex-shrink-0">
-                            J
-                          </div>
-                          <span className="text-xs font-bold text-foreground truncate">
-                            {equipos[2]?.nombre || "Jaguares FC"}
-                          </span>
-                        </div>
-                        <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                          2
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3 bg-card p-2 rounded-xl border border-secondary opacity-75">
-                        <div className="flex items-center gap-2 truncate">
-                          <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white font-black text-[10px] flex items-center justify-center flex-shrink-0">
-                            A
-                          </div>
-                          <span className="text-xs font-bold text-foreground truncate">
-                            {equipos[3]?.nombre || "Atlético SP"}
-                          </span>
-                        </div>
-                        <span className="text-xs font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded">
-                          0
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* CONECTOR VISUAL ENTRE SEMIFINALES Y FINAL */}
-                  <div className="w-8 flex items-center justify-center">
-                    <div className="w-full h-0.5 bg-secondary" />
-                  </div>
-
-                  {/* RONDA 2: GRAN FINAL Y CAMPEÓN */}
-                  <div className="flex-1 space-y-8 relative z-10">
-                    <div className="text-center mb-2">
-                      <span className="text-[10px] uppercase font-black tracking-widest text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
-                        Gran Final 🏆
-                      </span>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-amber-500/10 via-card to-card rounded-2xl border-2 border-amber-500/40 p-4 shadow-xl space-y-3">
-                      <div className="flex items-center justify-between gap-3 bg-card p-2.5 rounded-xl border border-amber-500/30 shadow">
-                        <div className="flex items-center gap-2 truncate">
-                          <div className="w-7 h-7 rounded-lg bg-red-600 text-white font-black text-xs flex items-center justify-center flex-shrink-0 shadow">
-                            T
-                          </div>
-                          <span className="text-xs font-black text-foreground truncate">
-                            {equipos[0]?.nombre || "Toros FC"}
-                          </span>
-                        </div>
-                        <span className="text-xs font-black text-amber-400 bg-amber-500/20 px-2.5 py-1 rounded-lg border border-amber-500/30">
-                          POR JUGAR
-                        </span>
-                      </div>
-
-                      <div className="text-center py-1">
-                        <span className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-widest">
-                          VS
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between gap-3 bg-card p-2.5 rounded-xl border border-amber-500/30 shadow">
-                        <div className="flex items-center gap-2 truncate">
-                          <div className="w-7 h-7 rounded-lg bg-amber-600 text-white font-black text-xs flex items-center justify-center flex-shrink-0 shadow">
-                            J
-                          </div>
-                          <span className="text-xs font-black text-foreground truncate">
-                            {equipos[2]?.nombre || "Jaguares FC"}
-                          </span>
-                        </div>
-                        <span className="text-xs font-black text-amber-400 bg-amber-500/20 px-2.5 py-1 rounded-lg border border-amber-500/30">
-                          POR JUGAR
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-secondary flex justify-end flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setModalBracketOpen(false)}
-                  className="px-5 py-2.5 bg-secondary text-foreground rounded-xl font-bold text-xs hover:bg-secondary/80 transition-colors min-h-[44px]"
-                >
-                  Cerrar Cuadro
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 6. MODAL DE CONFIRMACIÓN DE ELIMINACIÓN (ZONA DE PELIGRO) */}
+        {/* 5. MODAL DE CONFIRMACIÓN DE ELIMINACIÓN (ZONA DE PELIGRO) */}
         {modalEliminarOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
             <div className="bg-card rounded-3xl border border-red-500/40 max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
