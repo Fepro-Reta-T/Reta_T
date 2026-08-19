@@ -101,7 +101,7 @@ export default function EquiposTorneoPage() {
     });
   }
 
-  async function handlePublicar() {
+  async function handlePublicar(overrideEquipos?: string[]) {
     if (!paso1 || !paso2) return;
 
     const userStr = localStorage.getItem("user");
@@ -114,6 +114,8 @@ export default function EquiposTorneoPage() {
     setPublishing(true);
     setError(null);
 
+    const equipoIdsToSave = overrideEquipos !== undefined ? overrideEquipos : [...selectedIds];
+
     try {
       await torneosApi.crear({
         nombre: paso1.nombre,
@@ -122,7 +124,7 @@ export default function EquiposTorneoPage() {
         datos_adicionales: {
           imagen_portada: paso1.imagen_portada,
           formato: paso2,
-          equipo_ids: [...selectedIds],
+          equipo_ids: equipoIdsToSave,
           reglas: paso2.reglas ?? "",
         },
       });
@@ -145,14 +147,24 @@ export default function EquiposTorneoPage() {
       <div className="min-h-screen bg-background pb-24 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-4 py-8 space-y-5">
 
-          {/* Botón Regresar */}
-          <button
-            type="button"
-            onClick={() => router.push("/torneos/nuevo/formato")}
-            className="inline-flex items-center gap-1.5 min-h-[40px] px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-sm transition-colors"
-          >
-            ← Regresar a Formato
-          </button>
+          {/* Botones de navegación superior */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => router.push("/torneos/nuevo/formato")}
+              className="inline-flex items-center gap-1.5 min-h-[40px] px-4 py-2 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground font-semibold text-sm transition-colors"
+            >
+              ← Regresar a Formato
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePublicar([])}
+              disabled={publishing}
+              className="inline-flex items-center gap-1.5 min-h-[40px] px-4 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary font-bold text-sm transition-colors disabled:opacity-50"
+            >
+              Omitir este paso →
+            </button>
+          </div>
 
           {/* Encabezado */}
           <div>
@@ -298,7 +310,7 @@ export default function EquiposTorneoPage() {
           <div className="pt-2 space-y-3">
             <button
               type="button"
-              onClick={handlePublicar}
+              onClick={() => handlePublicar()}
               disabled={publishing}
               className="w-full min-h-[52px] py-4 bg-primary hover:bg-primary-light text-primary-foreground rounded-2xl font-black text-base shadow-xl hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider flex items-center justify-center gap-2"
             >
@@ -315,8 +327,18 @@ export default function EquiposTorneoPage() {
                 </>
               )}
             </button>
+
+            <button
+              type="button"
+              onClick={() => handlePublicar([])}
+              disabled={publishing}
+              className="w-full min-h-[44px] py-3 bg-secondary hover:bg-secondary/80 text-foreground rounded-2xl font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              Omitir paso e invitar equipos después
+            </button>
+
             <p className="text-center text-[11px] text-muted-foreground">
-              Los equipos no seleccionados podrán inscribirse después desde la vista del torneo.
+              Los equipos no seleccionados podrán inscribirse o ser añadidos después desde la vista del torneo.
             </p>
           </div>
 
