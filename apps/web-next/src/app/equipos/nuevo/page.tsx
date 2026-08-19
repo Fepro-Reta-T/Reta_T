@@ -208,6 +208,8 @@ export default function NuevoEquipoPage() {
           tipo_equipo: formData.tipo_equipo,
           sport_id: formData.sport_id,
           sport_nombre: selectedSportObj?.nombre || "Fútbol",
+          creador_id: user.id,
+          creador_email: user.email,
         },
       });
       router.push("/equipos");

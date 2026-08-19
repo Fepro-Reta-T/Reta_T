@@ -3,25 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authApi } from "../../lib/api";
-import { Role } from "@reta-t/types";
-
-// Tipos locales
-type VisualRole = "organizer" | "coach" | "player" | "referee" | "viewer";
-
-interface RoleOption {
-  id: VisualRole;
-  title: string;
-  description: string;
-  icon: string; // Emoji temporal
-}
-
-const roleOptions: RoleOption[] = [
-  { id: "organizer", title: "Organizador", description: "Creo y gestiono ligas y torneos", icon: "🏆" },
-  { id: "coach", title: "Entrenador / Coach", description: "Dirijo un equipo", icon: "📋" },
-  { id: "player", title: "Jugador", description: "Juego en un equipo", icon: "⚽" },
-  { id: "referee", title: "Árbitro / Referee", description: "Registro los eventos de un partido", icon: "⏱️" },
-  { id: "viewer", title: "Fan / Espectador", description: "Sigo a mis equipos y torneos favoritos", icon: "👀" },
-];
 
 interface SportOption {
   id: string;
@@ -46,43 +27,19 @@ const visualTeams = [
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(1); // Step 1: Deportes, Step 2: Equipos
   const [loading, setLoading] = useState(false);
 
   // Selecciones
-  const [selectedRole, setSelectedRole] = useState<VisualRole | null>(null);
   const [selectedSports, setSelectedSports] = useState<string[]>([]);
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
-
-  // Paso 1: Mapeo de rol visual a Role del backend
-  const getBackendRole = (visual: VisualRole): { role: Role; is_coach: boolean } => {
-    switch (visual) {
-      case "organizer": return { role: Role.ORGANIZER, is_coach: false };
-      case "referee": return { role: Role.MATCH_MANAGER, is_coach: false };
-      case "viewer": return { role: Role.VIEWER, is_coach: false };
-      case "coach": return { role: Role.PLAYER, is_coach: true };
-      case "player":
-      default: return { role: Role.PLAYER, is_coach: false };
-    }
-  };
 
   const handleFinish = async () => {
     setLoading(true);
     try {
-      let finalRole: Role = Role.PLAYER;
-      let isCoach = false;
-
-      if (selectedRole) {
-        const mapped = getBackendRole(selectedRole);
-        finalRole = mapped.role;
-        isCoach = mapped.is_coach;
-      }
-
       const updatedUser = await authApi.updateOnboarding({
-        role: finalRole,
         datos_adicionales: {
           onboarding_completed: true,
-          is_coach: isCoach,
           favorite_sports: selectedSports,
           favorite_teams: selectedTeams,
         },
@@ -91,22 +48,14 @@ export default function OnboardingPage() {
       router.push("/dashboard");
     } catch (error) {
       console.error("Error al guardar onboarding:", error);
-      // Fallback seguro al dashboard
       router.push("/dashboard");
     } finally {
       setLoading(false);
     }
   };
 
-  // Organizadores y Coaches no necesitan pasos de preferencias — van directo al dashboard
-  const rolesQueOmiten = ["organizer", "coach"];
-  const debeOmitirPreferencias = selectedRole !== null && rolesQueOmiten.includes(selectedRole);
-
   const nextStep = () => {
-    if (step === 1 && debeOmitirPreferencias) {
-      // Saltar pasos 2 y 3, finalizar directamente
-      handleFinish();
-    } else if (step < 3) {
+    if (step < 2) {
       setStep(step + 1);
     } else {
       handleFinish();
@@ -133,51 +82,12 @@ export default function OnboardingPage() {
         <div className="absolute top-0 left-0 w-full h-1 bg-secondary">
           <div 
             className="h-full bg-primary transition-all duration-300"
-            style={{ width: `${(step / 3) * 100}%` }}
+            style={{ width: `${(step / 2) * 100}%` }}
           />
         </div>
 
-        {/* STEP 1 */}
+        {/* STEP 1: Deportes Favoritos */}
         {step === 1 && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h1 className="text-3xl font-bold text-foreground text-center mb-2">¡Bienvenido a Reta-T!</h1>
-            <p className="text-muted-foreground text-center mb-8">¿Cómo planeas usar la plataforma?</p>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {roleOptions.map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => setSelectedRole(opt.id)}
-                  className={`p-4 border rounded-xl text-left transition-all ${
-                    selectedRole === opt.id 
-                      ? "border-primary bg-primary/10 ring-2 ring-primary/20" 
-                      : "border-secondary hover:border-primary/50 hover:bg-secondary/50"
-                  }`}
-                >
-                  <div className="text-3xl mb-2">{opt.icon}</div>
-                  <h3 className="font-semibold text-foreground">{opt.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{opt.description}</p>
-                </button>
-              ))}
-            </div>
-            
-            <div className="mt-8 flex justify-end gap-4">
-              <button onClick={() => nextStep()} className="px-6 py-2 text-muted-foreground hover:text-foreground transition-colors">
-                Saltar
-              </button>
-              <button 
-                onClick={() => nextStep()}
-                disabled={!selectedRole}
-                className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary-light transition-colors disabled:opacity-50"
-              >
-                Continuar
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 2 */}
-        {step === 2 && (
           <div className="animate-in fade-in slide-in-from-right-4 duration-500">
             <h1 className="text-3xl font-bold text-foreground text-center mb-2">Tus deportes favoritos</h1>
             <p className="text-muted-foreground text-center mb-8">Selecciona los deportes que más te interesan para personalizar tu experiencia.</p>
@@ -238,27 +148,22 @@ export default function OnboardingPage() {
               })}
             </div>
 
-            <div className="mt-8 flex justify-between">
-              <button onClick={() => setStep(1)} className="px-6 py-2 text-muted-foreground hover:text-foreground">
-                Atrás
+            <div className="mt-8 flex justify-end gap-4">
+              <button onClick={() => nextStep()} className="px-6 py-2 text-muted-foreground hover:text-foreground">
+                Saltar
               </button>
-              <div className="flex gap-4">
-                <button onClick={() => nextStep()} className="px-6 py-2 text-muted-foreground hover:text-foreground">
-                  Saltar
-                </button>
-                <button 
-                  onClick={() => nextStep()}
-                  className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary-light"
-                >
-                  Continuar
-                </button>
-              </div>
+              <button 
+                onClick={() => nextStep()}
+                className="px-6 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary-light"
+              >
+                Continuar
+              </button>
             </div>
           </div>
         )}
 
-        {/* STEP 3 */}
-        {step === 3 && (
+        {/* STEP 2: Equipos Sugeridos */}
+        {step === 2 && (
           <div className="animate-in fade-in slide-in-from-right-4 duration-500">
             <h1 className="text-3xl font-bold text-foreground text-center mb-2">Equipos sugeridos</h1>
             <p className="text-muted-foreground text-center mb-8">Basado en tu zona y preferencias, te sugerimos seguir a estos equipos.</p>
@@ -293,7 +198,7 @@ export default function OnboardingPage() {
             </div>
 
             <div className="mt-8 flex justify-between">
-              <button onClick={() => setStep(2)} className="px-6 py-2 text-muted-foreground hover:text-foreground">
+              <button onClick={() => setStep(1)} className="px-6 py-2 text-muted-foreground hover:text-foreground">
                 Atrás
               </button>
               <div className="flex gap-4">

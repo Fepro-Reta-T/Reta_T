@@ -1,8 +1,8 @@
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Enum as SAEnum, String, Uuid, func, JSON
+from sqlalchemy import Boolean, Column, Date, DateTime, Enum as SAEnum, String, Uuid, func, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -23,6 +23,12 @@ class RoleEnum(str, enum.Enum):
     VIEWER = "viewer"  # "Visualizador (municipio)" en el PDF
 
 
+class SexoEnum(str, enum.Enum):
+    MASCULINO = "masculino"
+    FEMENINO = "femenino"
+    OTRO = "otro"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -31,6 +37,16 @@ class User(Base):
     telefono: Mapped[str | None] = mapped_column(String(20), unique=True, index=True, nullable=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    sexo: Mapped[SexoEnum | None] = mapped_column(
+        SAEnum(
+            SexoEnum,
+            name="sexo_enum",
+            native_enum=True,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=True,
+    )
+    fecha_nacimiento: Mapped[date | None] = mapped_column(Date, nullable=True)
     role: Mapped[RoleEnum] = mapped_column(
         SAEnum(
             RoleEnum,

@@ -18,8 +18,8 @@
   --color-primary-foreground: #ffffff;
   --color-primary-light: #b91c1c;    /* Un tono un poco más claro para hover */
   
-  /* Fuentes (Opcional, puedes dejarlo como está) */
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Fuentes deportivas y dinámicas (Poppins principal) */
+  --font-sans: var(--font-poppins), var(--font-outfit), system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", monospace;
 }
 

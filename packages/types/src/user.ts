@@ -5,11 +5,15 @@ import type { Role } from "./roles";
  * Espejo de UserOut en backend/api/app/schemas/user.py.
  * Nunca contiene hashed_password.
  */
+export type Sexo = "masculino" | "femenino" | "otro";
+
 export interface User {
   id: string;          // UUID serializado como string
   email: string;
   telefono?: string | null;
   full_name: string;
+  sexo?: Sexo | null;
+  fecha_nacimiento?: string | null;
   role: Role;
   is_active: boolean;
   datos_adicionales?: Record<string, any> | null;
@@ -29,6 +33,8 @@ export interface RegisterPayload {
   telefono?: string;
   password: string;
   full_name: string;
+  sexo?: Sexo;
+  fecha_nacimiento?: string;
   role?: Role;         // El backend asigna PLAYER por defecto si se omite
 }
 

@@ -79,15 +79,24 @@ export default function GestionEquipoCoachPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Modales
   const [modalAgregarJugadorOpen, setModalAgregarJugadorOpen] = useState(false);
   const [modalEditarEquipoOpen, setModalEditarEquipoOpen] = useState(false);
+  const [modalEliminarEquipoOpen, setModalEliminarEquipoOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Formulario nuevo jugador
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevaPosicion, setNuevaPosicion] = useState<string>("");
   const [nuevoDorsal, setNuevoDorsal] = useState<number>(11);
   const [nuevoTelefono, setNuevoTelefono] = useState("");
+
+  const [currentUser] = useState<{ id?: string; email?: string; role?: string } | null>(() => {
+    if (typeof window !== "undefined") {
+      const uStr = localStorage.getItem("user");
+      return uStr ? JSON.parse(uStr) : null;
+    }
+    return null;
+  });
 
   const [isInvitado] = useState(() => {
     if (typeof window !== "undefined") {
@@ -155,6 +164,21 @@ export default function GestionEquipoCoachPage() {
     setJugadores((prev) => prev.filter((j) => j.id !== id));
   }
 
+  async function handleEliminarEquipo() {
+    if (!equipo) return;
+    try {
+      setDeleting(true);
+      await equiposApi.eliminar(equipo.id);
+      router.push("/equipos");
+    } catch (err: any) {
+      console.error("Error al eliminar el equipo:", err);
+      alert("Error al eliminar el equipo: " + (err?.detail || err?.message || "Inténtalo de nuevo."));
+    } finally {
+      setDeleting(false);
+      setModalEliminarEquipoOpen(false);
+    }
+  }
+
   if (loading) {
     return (
       <AppLayout>
@@ -189,6 +213,15 @@ export default function GestionEquipoCoachPage() {
   const posicionesDisponibles = getPosicionesPorDeporte(sportNombre);
   const totalGoles = jugadores.reduce((acc, j) => acc + (j.goles || 0), 0);
 
+  const isCoach = currentUser?.role === "organizer" || currentUser?.role === "admin" || currentUser?.role === "coach";
+  const isCreador = Boolean(
+    currentUser?.id &&
+      (equipo.datos_adicionales?.creador_id === currentUser.id ||
+        equipo.datos_adicionales?.organizer_id === currentUser.id ||
+        (equipo as any).organizer_id === currentUser.id)
+  );
+  const puedeEliminar = !isInvitado && Boolean(currentUser) && (isCoach || isCreador);
+
   return (
     <AppLayout>
       <div className="p-4 md:p-8 pb-24 max-w-5xl mx-auto space-y-6">
@@ -211,7 +244,7 @@ export default function GestionEquipoCoachPage() {
           <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-6">
             
             {/* Escudo PNG Nativo Grande */}
-            <div className="w-24 h-24 sm:w-32 sm:h-32 flex items-center justify-center flex-shrink-0 p-1">
+            <div className="w-32 h-32 sm:w-44 sm:h-44 flex items-center justify-center flex-shrink-0 p-2 drop-shadow-2xl">
               {equipo.logo_url ? (
                 <img
                   src={equipo.logo_url}
@@ -220,7 +253,7 @@ export default function GestionEquipoCoachPage() {
                 />
               ) : (
                 <div
-                  className="w-24 h-24 rounded-2xl flex items-center justify-center font-black text-white text-3xl shadow-lg border border-white/20"
+                  className="w-32 h-32 sm:w-40 sm:h-40 rounded-3xl flex items-center justify-center font-black text-white text-5xl shadow-2xl border border-white/20"
                   style={{ backgroundColor: clubColor }}
                 >
                   {equipo.nombre.charAt(0)}
@@ -394,6 +427,27 @@ export default function GestionEquipoCoachPage() {
           </div>
         </div>
 
+        {/* ZONA DE PELIGRO / ELIMINAR CLUB (HASTA ABAJO) */}
+        {puedeEliminar && (
+          <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="space-y-1 text-center sm:text-left">
+              <h3 className="text-sm font-black text-red-500 uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2">
+                <span>⚠️</span> Zona de Administración de Club
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Como coach o creador, puedes eliminar permanentemente este club y toda su plantilla registrada.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setModalEliminarEquipoOpen(true)}
+              className="w-full sm:w-auto px-6 py-3.5 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-lg hover:scale-105 active:scale-95 flex items-center justify-center gap-2 flex-shrink-0"
+            >
+              🗑️ Eliminar Club
+            </button>
+          </div>
+        )}
+
         {/* MODAL EMERGENTE: AGREGAR JUGADOR */}
         {modalAgregarJugadorOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
@@ -539,6 +593,73 @@ export default function GestionEquipoCoachPage() {
                   className="px-5 py-2.5 bg-secondary text-foreground rounded-xl font-bold text-xs hover:bg-secondary/80 transition-colors"
                 >
                   Entendido
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL ELIMINAR CLUB */}
+        {modalEliminarEquipoOpen && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-card rounded-3xl border border-red-500/30 max-w-md w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center pb-3 border-b border-secondary">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-red-500/20 text-red-500 flex items-center justify-center font-black text-lg border border-red-500/30">
+                    ⚠️
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-foreground tracking-tight">
+                      ¿Eliminar Club?
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Confirmación de acción permanente
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModalEliminarEquipoOpen(false)}
+                  disabled={deleting}
+                  className="text-muted-foreground hover:text-foreground text-xl font-bold p-1 disabled:opacity-50"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 bg-red-500/5 border border-red-500/20 rounded-2xl p-4 text-xs text-foreground">
+                <p className="font-medium leading-relaxed">
+                  ¿Estás seguro de que deseas eliminar permanentemente el club{" "}
+                  <strong className="text-red-400 font-extrabold text-sm underline decoration-red-500/50">
+                    {equipo.nombre}
+                  </strong>
+                  ?
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Esta acción no se puede deshacer. Se eliminarán los datos de la plantilla y su historial de participación.
+                </p>
+              </div>
+
+              <div className="pt-3 border-t border-secondary flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setModalEliminarEquipoOpen(false)}
+                  disabled={deleting}
+                  className="flex-1 py-3 bg-secondary text-foreground rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-secondary/80 transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEliminarEquipo}
+                  disabled={deleting}
+                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {deleting ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    "Sí, Eliminar Club"
+                  )}
                 </button>
               </div>
             </div>

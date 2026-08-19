@@ -1,6 +1,21 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Outfit, Poppins } from "next/font/google";
 import MSWProvider from "@/components/MSWProvider";
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-outfit",
+  display: "swap",
+});
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-poppins",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Reta-T",
@@ -13,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className="h-full antialiased dark" suppressHydrationWarning>
+    <html lang="es" className={`h-full antialiased dark ${outfit.variable} ${poppins.variable}`} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -33,7 +48,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className="min-h-full flex flex-col font-sans bg-background text-foreground transition-colors duration-300"
+        className={`${outfit.className} min-h-full flex flex-col bg-background text-foreground transition-colors duration-300`}
         suppressHydrationWarning
       >
         <MSWProvider>{children}</MSWProvider>

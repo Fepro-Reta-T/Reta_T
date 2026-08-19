@@ -47,6 +47,20 @@ const FEED_SOCIAL_MOCK = [
   },
 ];
 
+function getCategoryBadgeClass(categoria: string) {
+  const cat = (categoria || "").toLowerCase();
+  if (cat.includes("varonil")) {
+    return "bg-blue-500/15 text-blue-400 border-blue-500/30";
+  }
+  if (cat.includes("femenil")) {
+    return "bg-pink-500/15 text-pink-400 border-pink-500/30";
+  }
+  if (cat.includes("mixto")) {
+    return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+  }
+  return "bg-amber-500/15 text-amber-400 border-amber-500/30";
+}
+
 export default function DashboardPage() {
   const [torneos, setTorneos] = useState<Torneo[]>([]);
   const [canchas, setCanchas] = useState<Cancha[]>([]);
@@ -108,234 +122,243 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-8 pb-16 max-w-6xl mx-auto space-y-8">
+      <div className="p-4 md:p-8 pb-16 max-w-6xl mx-auto space-y-8 font-sans">
         
         {/* Encabezado y Saludo */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-card rounded-3xl p-6 border border-secondary shadow-sm">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              {greeting()}
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight mt-0.5">
-              {user ? user.full_name.split(" ")[0] : "Bienvenido a Reta_T"}
-            </h1>
-            {user && (
-              <div className="inline-flex items-center gap-2 mt-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold capitalize">
-                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                {user.role === "organizer"
-                  ? "Organizador / Coach"
-                  : user.role === "match_manager"
-                  ? "Encargado de Partido"
-                  : user.role === "player"
-                  ? "Jugador / Coach"
-                  : user.role === "viewer"
-                  ? "Visualizador"
-                  : user.role}
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/equipos/nuevo"
-              className="px-4 py-2.5 bg-primary hover:bg-primary-light text-primary-foreground font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md"
-            >
-              + Nuevo Equipo
-            </Link>
-          </div>
+        <div className="bg-card rounded-3xl p-6 border border-secondary shadow-sm">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            {greeting()}
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight mt-0.5">
+            {user ? user.full_name.split(" ")[0] : "Bienvenido a Reta_T"}
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            Resumen rápido de equipos, torneos y actividad de tu comunidad.
+          </p>
         </div>
 
         {/* ========================================================================= */}
-        {/* SECCIÓN PRINCIPAL DEL COACH 1: EQUIPOS DIRIGIDOS */}
+        {/* SECCIÓN 1: EQUIPOS (MÁXIMO 2 CON GRADIENTE DE DIFUMINADO + ACCIONES) */}
         {/* ========================================================================= */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-black text-foreground tracking-tight">
-                Equipos Dirigidos
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Clubes bajo tu dirección deportiva y gestión de plantilla.
-              </p>
-            </div>
-            <Link
-              href="/equipos"
-              className="text-xs font-bold text-primary hover:underline"
-            >
-              Ver Directorio ({equipos.length}) →
-            </Link>
+          <div>
+            <h2 className="text-xl font-black text-foreground tracking-tight">
+              Equipos
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Equipos registrados en tu comunidad deportiva.
+            </p>
           </div>
 
           {equipos.length === 0 ? (
             <div className="bg-card border border-dashed border-secondary rounded-3xl p-8 text-center space-y-3">
               <h3 className="text-base font-bold text-foreground">
-                Aún no diriges ningún equipo
+                No hay equipos registrados aún
               </h3>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                 Registra tu primer equipo deportivo para dar de alta a tus jugadores y participar en torneos.
               </p>
-              <Link
-                href="/equipos/nuevo"
-                className="inline-block px-5 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl text-xs uppercase tracking-wider hover:bg-primary-light transition-colors shadow"
-              >
-                Registrar Mi Primer Equipo
-              </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {equipos.slice(0, 3).map((equipo) => {
-                const clubColor = equipo.color || "#991b1b";
-                const tipoEquipo = equipo.datos_adicionales?.tipo_equipo || "Club";
+            <div className="relative">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {equipos.slice(0, 2).map((equipo) => {
+                  const clubColor = equipo.color || "#991b1b";
+                  const tipoEquipo = equipo.datos_adicionales?.tipo_equipo || "Club";
+                  const badgeClass = getCategoryBadgeClass(tipoEquipo);
 
-                return (
-                  <div
-                    key={equipo.id}
-                    className="bg-card rounded-3xl border border-secondary p-5 hover:shadow-xl transition-all flex flex-col justify-between group hover:border-primary/40 relative overflow-hidden"
-                    style={{
-                      background: `linear-gradient(135deg, ${clubColor}35 0%, rgba(24,24,27,0.95) 75%)`,
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-3 relative z-10">
-                      <div className="flex items-center gap-3">
-                        {/* Escudo PNG Nativo (Sin silueta de círculo) */}
-                        <div className="w-14 h-14 flex items-center justify-center overflow-hidden flex-shrink-0 p-1">
-                          {equipo.logo_url ? (
-                            <img
-                              src={equipo.logo_url}
-                              alt={equipo.nombre}
-                              className="max-w-full max-h-full object-contain filter drop-shadow-md"
-                            />
-                          ) : (
-                            <div
-                              className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-white text-lg"
-                              style={{ backgroundColor: clubColor }}
-                            >
-                              {equipo.nombre.charAt(0)}
-                            </div>
-                          )}
+                  return (
+                    <div
+                      key={equipo.id}
+                      className="bg-card rounded-3xl border border-secondary p-5 hover:shadow-xl transition-all flex flex-col justify-between group hover:border-primary/40 relative overflow-hidden"
+                      style={{
+                        background: `linear-gradient(135deg, ${clubColor}22 0%, var(--color-card) 75%)`,
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-3 relative z-10">
+                        <div className="flex items-center gap-3">
+                          <div className="w-14 h-14 flex items-center justify-center overflow-hidden flex-shrink-0 p-1">
+                            {equipo.logo_url ? (
+                              <img
+                                src={equipo.logo_url}
+                                alt={equipo.nombre}
+                                className="max-w-full max-h-full object-contain filter drop-shadow-md"
+                              />
+                            ) : (
+                              <div
+                                className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-white text-lg shadow"
+                                style={{ backgroundColor: clubColor }}
+                              >
+                                {equipo.nombre.charAt(0)}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="truncate">
+                            <h3 className="text-base font-bold text-foreground leading-tight group-hover:text-primary transition-colors truncate">
+                              {equipo.nombre}
+                            </h3>
+                            <span className={`text-[10px] uppercase font-extrabold px-2.5 py-0.5 rounded-full border inline-block mt-1.5 ${badgeClass}`}>
+                              Rama: {tipoEquipo}
+                            </span>
+                          </div>
                         </div>
+                      </div>
 
-                        <div className="truncate">
-                          <h3 className="text-base font-bold text-foreground leading-tight group-hover:text-primary transition-colors truncate">
-                            {equipo.nombre}
-                          </h3>
-                          <span className="text-[10px] uppercase font-extrabold text-muted-foreground tracking-wider block mt-0.5">
-                            Rama: {tipoEquipo}
+                      <div className="mt-4 pt-3 border-t border-secondary flex items-center justify-between gap-2 relative z-10">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full border border-white/20"
+                            style={{ backgroundColor: clubColor }}
+                          />
+                          <span className="text-[11px] font-semibold text-muted-foreground uppercase truncate">
+                            {(equipo as any).sport?.nombre || equipo.datos_adicionales?.sport_nombre || "Club Deportivo"}
                           </span>
                         </div>
+
+                        <Link
+                          href={`/equipos/${equipo.id}`}
+                          className="min-h-[38px] px-3.5 py-1.5 bg-primary hover:bg-primary-light text-primary-foreground font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center cursor-pointer"
+                        >
+                          Gestionar
+                        </Link>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
 
-                    <div className="mt-4 pt-3 border-t border-secondary flex items-center justify-between relative z-10">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full border border-white/20"
-                          style={{ backgroundColor: clubColor }}
-                        />
-                        <span className="text-[11px] font-semibold text-muted-foreground uppercase">
-                          {(equipo as any).sport?.nombre || equipo.datos_adicionales?.sport_nombre || "Club Deportivo"}
-                        </span>
-                      </div>
-
-                      <Link
-                        href={`/equipos/${equipo.id}`}
-                        className="text-xs font-black text-primary hover:underline cursor-pointer"
-                      >
-                        Gestionar Plantilla →
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
+              {/* Difuminado sutil si existen más equipos */}
+              {equipos.length > 2 && (
+                <div className="absolute -bottom-3 left-0 right-0 h-12 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none rounded-b-3xl" />
+              )}
             </div>
           )}
+
+          {/* Acciones de Equipos */}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <Link
+              href="/equipos"
+              className="min-h-[44px] px-5 py-2.5 border border-secondary bg-card hover:bg-secondary text-foreground text-xs font-extrabold rounded-xl transition-all shadow-sm flex items-center justify-center"
+            >
+              Mostrar más ({equipos.length})
+            </Link>
+
+            {!isInvitado && (
+              <Link
+                href="/equipos/nuevo"
+                className="min-h-[44px] px-5 py-2.5 bg-primary hover:bg-primary-light text-primary-foreground text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center"
+              >
+                + Registrar equipo
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* ========================================================================= */}
-        {/* SECCIÓN PRINCIPAL DEL COACH 2: TORNEOS EN LOS QUE PARTICIPO */}
+        {/* SECCIÓN 2: TORNEOS (MÁXIMO 2 CON GRADIENTE DE DIFUMINADO + ACCIONES) */}
         {/* ========================================================================= */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-black text-foreground tracking-tight">
-                Torneos en los que Participo
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                Competencias activas donde compiten tus equipos.
-              </p>
-            </div>
-            <Link
-              href="/torneos"
-              className="text-xs font-bold text-primary hover:underline"
-            >
-              Explorar Torneos ({torneos.length}) →
-            </Link>
+        <div className="space-y-4 pt-4 border-t border-secondary/60">
+          <div>
+            <h2 className="text-xl font-black text-foreground tracking-tight">
+              Torneos
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Torneos y competencias activas.
+            </p>
           </div>
 
           {torneos.length === 0 ? (
             <div className="bg-card border border-dashed border-secondary rounded-3xl p-8 text-center space-y-3">
               <h3 className="text-base font-bold text-foreground">
-                No estás participando en ningún torneo actualmente
+                No hay torneos registrados actualmente
               </h3>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Inscribe tu equipo en los torneos disponibles de tu comunidad.
+                Organiza tu primer torneo para convocar equipos de tu comunidad.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {torneos.slice(0, 2).map((torneo) => {
-                const portada = torneo.datos_adicionales?.imagen_portada || "/Futbol 7.jpg";
+            <div className="relative">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {torneos.slice(0, 2).map((torneo) => {
+                  const portada = torneo.datos_adicionales?.imagen_portada || "/Futbol 7.jpg";
+                  const badgeClass = getCategoryBadgeClass(torneo.categoria);
 
-                return (
-                  <div
-                    key={torneo.id}
-                    className="group relative rounded-3xl overflow-hidden border border-secondary bg-card shadow-lg flex flex-col justify-between h-64 hover:border-primary/50 transition-all"
-                  >
-                    <img
-                      src={portada}
-                      alt={torneo.nombre}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/20" />
+                  return (
+                    <div
+                      key={torneo.id}
+                      className="group relative rounded-3xl overflow-hidden border border-secondary bg-card shadow-lg flex flex-col justify-between h-64 hover:border-primary/50 transition-all"
+                    >
+                      <img
+                        src={portada}
+                        alt={torneo.nombre}
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-card via-black/40 to-transparent" />
 
-                    <div className="relative z-10 p-5 flex justify-between items-start">
-                      <span className="text-xs uppercase tracking-widest font-extrabold text-white bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 capitalize">
-                        Categoría: {torneo.categoria}
-                      </span>
-                      {torneo.sport && (
-                        <span className="text-xs uppercase tracking-widest font-extrabold text-primary-light bg-primary/30 backdrop-blur-md px-3 py-1 rounded-full border border-primary/30">
-                          {torneo.sport.nombre}
+                      <div className="relative z-10 p-5 flex justify-between items-start">
+                        <span className={`text-xs uppercase tracking-widest font-extrabold backdrop-blur-md px-3 py-1 rounded-full border capitalize ${badgeClass}`}>
+                          Categoría: {torneo.categoria}
                         </span>
-                      )}
-                    </div>
+                        {torneo.sport && (
+                          <span className="text-xs uppercase tracking-widest font-extrabold text-primary-light bg-primary/30 backdrop-blur-md px-3 py-1 rounded-full border border-primary/30">
+                            {torneo.sport.nombre}
+                          </span>
+                        )}
+                      </div>
 
-                    <div className="relative z-10 p-6 space-y-3">
-                      <h3 className="text-xl sm:text-2xl font-black text-white drop-shadow-md leading-tight">
-                        {torneo.nombre}
-                      </h3>
+                      <div className="relative z-10 p-6 space-y-3">
+                        <h3 className="text-xl sm:text-2xl font-black text-white drop-shadow-md leading-tight">
+                          {torneo.nombre}
+                        </h3>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-white/10">
-                        <span className="text-xs font-semibold text-white/80">
-                          {torneo.equipos ? torneo.equipos.length : 0} Equipos inscritos
-                        </span>
+                        <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                          <span className="text-xs font-semibold text-white/80">
+                            {torneo.equipos ? torneo.equipos.length : 0} Equipos inscritos
+                          </span>
 
-                        <Link
-                          href={`/torneos/${torneo.id}`}
-                          className="px-4 py-2 bg-primary hover:bg-primary-light text-primary-foreground font-bold rounded-xl text-xs uppercase tracking-wider transition-colors shadow-md"
-                        >
-                          Ver Torneo →
-                        </Link>
+                          <Link
+                            href={`/torneos/${torneo.id}`}
+                            className="min-h-[44px] px-4 py-2.5 bg-primary hover:bg-primary-light text-primary-foreground font-bold rounded-xl text-xs uppercase tracking-wider transition-colors shadow-md flex items-center justify-center"
+                          >
+                            Ver Torneo →
+                          </Link>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+
+              {/* Difuminado sutil si existen más torneos */}
+              {torneos.length > 2 && (
+                <div className="absolute -bottom-3 left-0 right-0 h-12 bg-gradient-to-t from-background via-background/60 to-transparent pointer-events-none rounded-b-3xl" />
+              )}
             </div>
           )}
+
+          {/* Acciones de Torneos */}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <Link
+              href="/torneos"
+              className="min-h-[44px] px-5 py-2.5 border border-secondary bg-card hover:bg-secondary text-foreground text-xs font-extrabold rounded-xl transition-all shadow-sm flex items-center justify-center"
+            >
+              Mostrar todos ({torneos.length})
+            </Link>
+
+            {!isInvitado && (
+              <Link
+                href="/torneos/nuevo"
+                className="min-h-[44px] px-5 py-2.5 bg-primary hover:bg-primary-light text-primary-foreground text-xs font-extrabold uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center"
+              >
+                + Organizar torneo o liga
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Tarjetas de Estadísticas Principales */}
-        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-3 gap-3 sm:gap-4 pt-4 border-t border-secondary/60">
           {[
             { label: "Torneos Disponibles", value: torneos.length, href: "/torneos" },
             { label: "Equipos Registrados", value: equipos.length, href: "/equipos" },
@@ -356,12 +379,14 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* SECCIÓN INFERIOR: EXPLORACIÓN DE LA COMUNIDAD */}
-        <div className="bg-card rounded-3xl border border-secondary p-6 shadow-sm space-y-6">
+        {/* ========================================================================= */}
+        {/* SECCIÓN 3: COMUNIDAD */}
+        {/* ========================================================================= */}
+        <div className="bg-card rounded-3xl border border-secondary p-6 shadow-sm space-y-6 pt-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-secondary">
             <div>
-              <h2 className="text-lg font-black text-foreground tracking-tight">
-                Explora en la Comunidad
+              <h2 className="text-xl font-black text-foreground tracking-tight">
+                Comunidad
               </h2>
               <p className="text-xs text-muted-foreground">
                 Feed social de eventos, estadísticas de liga, canchas y equipos.

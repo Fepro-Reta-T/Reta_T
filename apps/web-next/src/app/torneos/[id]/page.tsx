@@ -49,6 +49,20 @@ const MOCK_TABLA_GOLEO = [
   { pos: 3, jugador: "Mateo Hernández", equipo: "Jaguares FC", goles: 5 },
 ];
 
+function getCategoryBadgeClass(categoria: string) {
+  const cat = (categoria || "").toLowerCase();
+  if (cat.includes("varonil")) {
+    return "bg-blue-500/15 text-blue-400 border-blue-500/30";
+  }
+  if (cat.includes("femenil")) {
+    return "bg-pink-500/15 text-pink-400 border-pink-500/30";
+  }
+  if (cat.includes("mixto")) {
+    return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+  }
+  return "bg-amber-500/15 text-amber-400 border-amber-500/30";
+}
+
 export default function DetalleTorneoPage() {
   const params = useParams();
   const router = useRouter();
@@ -141,9 +155,9 @@ export default function DetalleTorneoPage() {
           </p>
           <Link
             href="/torneos"
-            className="px-5 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl text-sm hover:bg-primary-light transition-colors shadow"
+            className="min-h-[44px] px-6 py-2.5 bg-primary text-primary-foreground font-extrabold rounded-xl text-xs uppercase tracking-wider hover:bg-primary-light transition-colors shadow flex items-center justify-center"
           >
-            ← Volver a Catálogo de Torneos
+            ← Volver a Torneos
           </Link>
         </div>
       </AppLayout>
@@ -152,6 +166,7 @@ export default function DetalleTorneoPage() {
 
   const portada = torneo.datos_adicionales?.imagen_portada || "/Futbol 7.jpg";
   const reglas = torneo.datos_adicionales?.reglas;
+  const badgeClass = getCategoryBadgeClass(torneo.categoria);
 
   // Cálculo estético de tabla de posiciones basado en los equipos inscritos
   const tablaPosiciones = equipos.map((eq, idx) => ({
@@ -171,38 +186,39 @@ export default function DetalleTorneoPage() {
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-8 pb-24 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 md:p-8 pb-24 max-w-5xl mx-auto space-y-6 font-sans">
         
         {/* Enlace Volver */}
         <Link
           href="/torneos"
-          className="inline-flex items-center text-sm font-bold text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-extrabold text-muted-foreground hover:text-foreground transition-colors"
         >
-          ← Volver a Torneos
+          ← Volver a Catálogo de Torneos
         </Link>
 
-        {/* HERO BANNER DE PORTADA DEL TORNEO */}
-        <div className="relative w-full h-56 sm:h-72 rounded-3xl overflow-hidden border border-secondary shadow-xl group">
+        {/* HERO BANNER DE PORTADA DEL TORNEO CON DEGRADADO SUAVE */}
+        <div className="relative w-full h-60 sm:h-72 rounded-3xl overflow-hidden border border-secondary shadow-xl group bg-card">
           <img
             src={portada}
             alt={torneo.nombre}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/20" />
+          {/* Degradado progresivo hacia el fondo semántico */}
+          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/75 via-45% to-black/30" />
 
           <div className="absolute inset-0 p-6 sm:p-8 flex flex-col justify-end z-10 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs uppercase tracking-widest font-extrabold text-white bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/20 capitalize">
+              <span className={`text-xs uppercase tracking-widest font-extrabold backdrop-blur-md px-3 py-1 rounded-full border capitalize shadow-sm ${badgeClass}`}>
                 Categoría: {torneo.categoria}
               </span>
               {torneo.sport && (
-                <span className="text-xs uppercase tracking-widest font-extrabold text-primary-light bg-primary/30 backdrop-blur-md px-3 py-1 rounded-full border border-primary/30">
+                <span className="text-xs uppercase tracking-widest font-extrabold text-foreground bg-card/80 backdrop-blur-md px-3 py-1 rounded-full border border-secondary shadow-sm">
                   {torneo.sport.nombre}
                 </span>
               )}
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-black text-white drop-shadow-md tracking-tight leading-tight">
+            <h1 className="text-2xl sm:text-4xl font-black text-foreground tracking-tight leading-tight drop-shadow-sm">
               {torneo.nombre}
             </h1>
           </div>
@@ -213,7 +229,7 @@ export default function DetalleTorneoPage() {
           {!isInvitado && (
             <Link
               href={`/torneos/${torneo.id}/inscribir`}
-              className="flex-1 sm:flex-none px-6 py-3.5 bg-primary hover:bg-primary-light text-primary-foreground font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-xl hover:scale-[1.02] active:scale-95 text-center flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-none min-h-[44px] px-6 py-3 bg-primary hover:bg-primary-light text-primary-foreground font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-md text-center flex items-center justify-center gap-2"
             >
               <span>+ Inscribir Equipo</span>
             </Link>
@@ -222,7 +238,7 @@ export default function DetalleTorneoPage() {
           {isOrganizer && !isInvitado && (
             <Link
               href={`/partidos/nuevo?torneo_id=${torneo.id}`}
-              className="flex-1 sm:flex-none px-6 py-3.5 bg-secondary hover:bg-secondary/80 text-foreground border border-secondary font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-md text-center flex items-center justify-center gap-2"
+              className="flex-1 sm:flex-none min-h-[44px] px-6 py-3 bg-secondary hover:bg-secondary/80 text-foreground border border-secondary font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-sm text-center flex items-center justify-center gap-2"
             >
               <span>Programar Partido</span>
             </Link>
@@ -263,7 +279,7 @@ export default function DetalleTorneoPage() {
                       key={eq.id}
                       className="w-12 h-12 rounded-2xl flex items-center justify-center p-1 border border-white/10 flex-shrink-0 shadow-md relative overflow-hidden"
                       style={{
-                        background: `linear-gradient(135deg, ${clubColor}50 0%, rgba(9,9,11,0.9) 100%)`,
+                        background: `linear-gradient(135deg, ${clubColor}30 0%, var(--color-card) 100%)`,
                       }}
                       title={eq.nombre}
                     >
@@ -289,8 +305,13 @@ export default function DetalleTorneoPage() {
               )}
             </div>
 
-            <div className="pt-3 border-t border-secondary flex items-center justify-between text-xs font-bold text-primary group-hover:underline">
-              <span>Toca para expandir clubes completos →</span>
+            <div className="pt-3 border-t border-secondary flex items-center justify-end">
+              <button
+                type="button"
+                className="min-h-[40px] px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer"
+              >
+                Ver Clubes ({equipos.length}) →
+              </button>
             </div>
           </div>
 
@@ -313,11 +334,11 @@ export default function DetalleTorneoPage() {
               </span>
             </div>
 
-            {/* Preview del Próximo Partido con Degradados Oficiales Cara a Cara */}
+            {/* Preview del Próximo Partido alineado simétricamente con min-w-0 */}
             {MOCK_PARTIDOS.length > 0 && (
               <div className="bg-background rounded-2xl border border-secondary p-3 flex items-center justify-between gap-2 overflow-hidden">
                 <div
-                  className="flex items-center gap-2 flex-1 p-2 rounded-xl truncate"
+                  className="flex items-center gap-2 flex-1 min-w-0 p-2 rounded-xl"
                   style={{
                     background: `linear-gradient(90deg, ${MOCK_PARTIDOS[0].localColor}40 0%, transparent 100%)`,
                   }}
@@ -326,22 +347,22 @@ export default function DetalleTorneoPage() {
                     className="w-3 h-3 rounded-full flex-shrink-0"
                     style={{ backgroundColor: MOCK_PARTIDOS[0].localColor }}
                   />
-                  <span className="font-bold text-xs text-foreground truncate">
+                  <span className="font-bold text-xs text-foreground truncate min-w-0">
                     {MOCK_PARTIDOS[0].local}
                   </span>
                 </div>
 
-                <span className="px-2.5 py-1 bg-secondary rounded-lg font-black text-xs text-foreground">
+                <span className="px-2.5 py-1 bg-secondary rounded-lg font-black text-xs text-foreground flex-shrink-0">
                   VS
                 </span>
 
                 <div
-                  className="flex items-center gap-2 flex-1 justify-end p-2 rounded-xl text-right truncate"
+                  className="flex items-center gap-2 flex-1 min-w-0 justify-end p-2 rounded-xl text-right"
                   style={{
                     background: `linear-gradient(270deg, ${MOCK_PARTIDOS[0].visitanteColor}40 0%, transparent 100%)`,
                   }}
                 >
-                  <span className="font-bold text-xs text-foreground truncate">
+                  <span className="font-bold text-xs text-foreground truncate min-w-0">
                     {MOCK_PARTIDOS[0].visitante}
                   </span>
                   <span
@@ -352,8 +373,13 @@ export default function DetalleTorneoPage() {
               </div>
             )}
 
-            <div className="pt-3 border-t border-secondary flex items-center justify-between text-xs font-bold text-primary group-hover:underline">
-              <span>Toca para expandir calendario completo →</span>
+            <div className="pt-3 border-t border-secondary flex items-center justify-end">
+              <button
+                type="button"
+                className="min-h-[40px] px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer"
+              >
+                Ver Rol de Juegos →
+              </button>
             </div>
           </div>
 
@@ -385,15 +411,15 @@ export default function DetalleTorneoPage() {
                     key={tp.pos}
                     className="flex items-center justify-between text-xs font-bold bg-background p-2 rounded-xl border border-secondary/50"
                   >
-                    <div className="flex items-center gap-2 truncate">
-                      <span className="text-muted-foreground font-black">#{tp.pos}</span>
+                    <div className="flex items-center gap-2 truncate min-w-0">
+                      <span className="text-muted-foreground font-black flex-shrink-0">#{tp.pos}</span>
                       <span
                         className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: tp.color }}
                       />
-                      <span className="truncate">{tp.equipo}</span>
+                      <span className="truncate min-w-0">{tp.equipo}</span>
                     </div>
-                    <span className="text-primary font-black px-2 py-0.5 rounded bg-primary/10">
+                    <span className="text-primary font-black px-2 py-0.5 rounded bg-primary/10 flex-shrink-0">
                       {tp.pts} pts
                     </span>
                   </div>
@@ -401,8 +427,13 @@ export default function DetalleTorneoPage() {
               )}
             </div>
 
-            <div className="pt-3 border-t border-secondary flex items-center justify-between text-xs font-bold text-primary group-hover:underline">
-              <span>Toca para expandir tabla completa →</span>
+            <div className="pt-3 border-t border-secondary flex items-center justify-end">
+              <button
+                type="button"
+                className="min-h-[40px] px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer"
+              >
+                Ver Tabla →
+              </button>
             </div>
           </div>
 
@@ -425,27 +456,32 @@ export default function DetalleTorneoPage() {
               </span>
             </div>
 
-            <div className="bg-background p-3 rounded-2xl border border-secondary flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-black text-xs flex items-center justify-center border border-primary/20">
+            <div className="bg-background p-3 rounded-2xl border border-secondary flex items-center justify-between gap-2">
+              <div className="flex items-center gap-3 truncate min-w-0">
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-black text-xs flex items-center justify-center border border-primary/20 flex-shrink-0">
                   1
                 </div>
-                <div>
-                  <p className="font-bold text-xs text-foreground">
+                <div className="truncate min-w-0">
+                  <p className="font-bold text-xs text-foreground truncate min-w-0">
                     {MOCK_TABLA_GOLEO[0].jugador}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-[10px] text-muted-foreground truncate min-w-0">
                     {MOCK_TABLA_GOLEO[0].equipo}
                   </p>
                 </div>
               </div>
-              <span className="text-xl font-black text-primary">
+              <span className="text-xl font-black text-primary flex-shrink-0">
                 {MOCK_TABLA_GOLEO[0].goles} Goles
               </span>
             </div>
 
-            <div className="pt-3 border-t border-secondary flex items-center justify-between text-xs font-bold text-primary group-hover:underline">
-              <span>Toca para expandir goleadores completos →</span>
+            <div className="pt-3 border-t border-secondary flex items-center justify-end">
+              <button
+                type="button"
+                className="min-h-[40px] px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer"
+              >
+                Ver Goleadores →
+              </button>
             </div>
           </div>
 
@@ -537,7 +573,7 @@ export default function DetalleTorneoPage() {
                           key={eq.id}
                           className="bg-background rounded-2xl border border-secondary p-4 flex items-center gap-4 relative overflow-hidden shadow-sm"
                           style={{
-                            background: `linear-gradient(135deg, ${clubColor}40 0%, rgba(9,9,11,0.95) 80%)`,
+                            background: `linear-gradient(135deg, ${clubColor}25 0%, var(--color-card) 80%)`,
                           }}
                         >
                           {/* Escudo PNG Nativo (Sin silueta circular) */}
@@ -638,12 +674,12 @@ export default function DetalleTorneoPage() {
                     <div className="flex items-center gap-2 bg-card p-2 rounded-2xl border border-secondary flex-1 max-w-md">
                       {/* Lado Local con Degradado de su Color Oficial */}
                       <div
-                        className="flex items-center gap-2 flex-1 justify-end text-right p-2 rounded-xl transition-all"
+                        className="flex items-center gap-2 flex-1 min-w-0 justify-end text-right p-2 rounded-xl transition-all"
                         style={{
                           background: `linear-gradient(90deg, ${match.localColor}40 0%, transparent 100%)`,
                         }}
                       >
-                        <span className="font-bold text-xs text-foreground truncate">
+                        <span className="font-bold text-xs text-foreground truncate min-w-0">
                           {match.local}
                         </span>
                         <span
@@ -661,7 +697,7 @@ export default function DetalleTorneoPage() {
 
                       {/* Lado Visitante con Degradado de su Color Oficial */}
                       <div
-                        className="flex items-center gap-2 flex-1 text-left p-2 rounded-xl transition-all"
+                        className="flex items-center gap-2 flex-1 min-w-0 text-left p-2 rounded-xl transition-all"
                         style={{
                           background: `linear-gradient(270deg, ${match.visitanteColor}40 0%, transparent 100%)`,
                         }}
@@ -670,7 +706,7 @@ export default function DetalleTorneoPage() {
                           className="w-3.5 h-3.5 rounded-full border border-white/20 flex-shrink-0 shadow-sm"
                           style={{ backgroundColor: match.visitanteColor }}
                         />
-                        <span className="font-bold text-xs text-foreground truncate">
+                        <span className="font-bold text-xs text-foreground truncate min-w-0">
                           {match.visitante}
                         </span>
                       </div>
