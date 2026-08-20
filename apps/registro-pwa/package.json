@@ -13,8 +13,10 @@
     "@reta-t/api-client": "workspace:*",
     "@reta-t/types": "workspace:*",
     "@reta-t/ui": "workspace:*",
+    "idb": "^8.0.3",
     "react": "^19.2.7",
-    "react-dom": "^19.2.7"
+    "react-dom": "^19.2.7",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",
