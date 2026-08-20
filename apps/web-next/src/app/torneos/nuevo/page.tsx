@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { torneosApi, apiClient } from "@/lib/api";
+import { apiClient } from "@/lib/api";
 import AppLayout from "@/components/AppLayout";
+import WizardProgressBar from "./_components/WizardProgressBar";
 
 interface Sport {
   id: string;
@@ -67,13 +68,12 @@ export default function NuevoTorneoPage() {
   const [activeStep, setActiveStep] = useState<number>(1);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Formulario
+  // Formulario — Fase 1: solo datos básicos
   const [formData, setFormData] = useState({
     nombre: "",
     imagen_portada: "/Futbol 7.jpg",
     sport_id: "",
     categoria: "",
-    reglas: "",
   });
 
   async function cargarSports() {
@@ -94,6 +94,18 @@ export default function NuevoTorneoPage() {
 
   useEffect(() => {
     cargarSports();
+    // Cargar borrador guardado si existe
+    const draft = sessionStorage.getItem("torneo_wizard_draft");
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed.paso1) {
+          setFormData((prev) => ({ ...prev, ...parsed.paso1 }));
+        }
+      } catch {
+        // borrador corrupto, ignorar
+      }
+    }
   }, []);
 
   // Función para cambiar de paso y hacer scroll automático hacia la tarjeta que se abre
@@ -168,59 +180,42 @@ export default function NuevoTorneoPage() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSiguiente(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError(null);
-
-    const userStr = localStorage.getItem("user");
-    const user = userStr ? JSON.parse(userStr) : null;
-
-    if (!user) {
-      setError("Debes iniciar sesión para crear un torneo.");
-      setLoading(false);
-      return;
-    }
 
     if (!formData.nombre.trim()) {
       setError("El nombre del torneo es obligatorio.");
       irAlPaso(1, step1Ref);
-      setLoading(false);
       return;
     }
-
     if (!formData.sport_id) {
       setError("Por favor selecciona un deporte.");
       irAlPaso(3, step3Ref);
-      setLoading(false);
       return;
     }
-
     if (!formData.categoria) {
       setError("Por favor selecciona una categoría.");
       irAlPaso(4, step4Ref);
-      setLoading(false);
       return;
     }
 
-    try {
-      await torneosApi.crear({
-        nombre: formData.nombre,
-        categoria: formData.categoria,
-        sport_id: formData.sport_id,
-        datos_adicionales: {
+    // Guardar Fase 1 en sessionStorage y avanzar
+    const draft = JSON.parse(sessionStorage.getItem("torneo_wizard_draft") || "{}");
+    sessionStorage.setItem(
+      "torneo_wizard_draft",
+      JSON.stringify({
+        ...draft,
+        paso1: {
+          nombre: formData.nombre,
           imagen_portada: formData.imagen_portada,
-          reglas: formData.reglas,
+          sport_id: formData.sport_id,
+          sport_nombre: sports.find((s) => s.id === formData.sport_id)?.nombre || "",
+          categoria: formData.categoria,
         },
-      });
-      router.push("/torneos");
-    } catch (err: any) {
-      const msg = err?.message || err?.detail || "Error al crear el torneo";
-      setError(typeof msg === "string" ? msg : JSON.stringify(msg));
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+      })
+    );
+    router.push("/torneos/nuevo/formato");
   }
 
   const selectedSportObj = sports.find((s) => s.id === formData.sport_id);
@@ -230,7 +225,6 @@ export default function NuevoTorneoPage() {
   const isStep2Complete = Boolean(formData.imagen_portada) && activeStep > 2;
   const isStep3Complete = Boolean(formData.sport_id) && activeStep > 3;
   const isStep4Complete = Boolean(formData.categoria) && activeStep > 4;
-  const isStep5Complete = Boolean(formData.reglas.trim());
 
   if (loadingSports) {
     return (
@@ -294,8 +288,11 @@ export default function NuevoTorneoPage() {
           </div>
 
           {/* Formulario Acordeón Paso a Paso con Auto-Scroll */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            
+          <form onSubmit={handleSiguiente} className="space-y-4">
+
+            {/* Barra de Progreso del Wizard */}
+            <WizardProgressBar currentStep={1} />
+
             {/* PASO 1: NOMBRE */}
             <div
               ref={step1Ref}
@@ -667,71 +664,6 @@ export default function NuevoTorneoPage() {
               )}
             </div>
 
-            {/* PASO 5: REGLAS Y DETALLES (NUEVO CAMPO SOLICITADO) */}
-            <div
-              ref={step5Ref}
-              className="bg-card rounded-2xl border border-secondary overflow-hidden shadow-sm transition-all duration-300"
-            >
-              <div
-                onClick={() => irAlPaso(5, step5Ref)}
-                className="flex items-center justify-between p-5 cursor-pointer hover:bg-secondary/20 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${
-                      isStep5Complete
-                        ? "bg-emerald-600 text-white"
-                        : activeStep === 5
-                        ? "bg-foreground text-background"
-                        : "bg-secondary text-muted-foreground"
-                    }`}
-                  >
-                    {isStep5Complete ? "✓" : "5"}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-foreground text-base">
-                      Paso 5: Reglas y Detalles Adicionales
-                    </h3>
-                    {activeStep !== 5 && formData.reglas.trim() && (
-                      <p className="text-xs text-muted-foreground font-medium mt-0.5 truncate max-w-xs">
-                        {formData.reglas}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {activeStep !== 5 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      irAlPaso(5, step5Ref);
-                    }}
-                    className="text-xs font-semibold text-primary hover:underline px-3 py-1 rounded-lg bg-primary/10"
-                  >
-                    Editar
-                  </button>
-                )}
-              </div>
-
-              {activeStep === 5 && (
-                <div className="p-5 pt-0 border-t border-secondary/50 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                  <div className="pt-3">
-                    <label className="block text-sm font-semibold text-foreground mb-2">
-                      Escribe las reglas, premios o formato del torneo (opcional)
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={formData.reglas}
-                      onChange={(e) => setFormData({ ...formData, reglas: e.target.value })}
-                      className="w-full px-4 py-3 border border-secondary rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-all placeholder:text-muted-foreground resize-none"
-                      placeholder="Ej: Se jugará a eliminación directa. Premiación al 1er y 2do lugar. Costo por partido: $200 MXN."
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* Error Message */}
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-sm text-red-600 font-medium">
@@ -739,15 +671,18 @@ export default function NuevoTorneoPage() {
               </div>
             )}
 
-            {/* Botón Final Crear Torneo */}
+            {/* Botón: Siguiente Fase */}
             <div className="pt-4">
               <button
                 type="submit"
-                disabled={loading || !formData.nombre.trim() || !formData.categoria || !formData.sport_id}
-                className="w-full py-4 bg-primary hover:bg-primary-light text-primary-foreground rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl transition-all disabled:opacity-40 disabled:cursor-not-allowed uppercase tracking-wider"
+                disabled={!formData.nombre.trim() || !formData.categoria || !formData.sport_id}
+                className="w-full min-h-[52px] py-4 bg-primary hover:bg-primary-light text-primary-foreground rounded-2xl font-black text-base shadow-xl hover:shadow-2xl transition-all disabled:opacity-40 disabled:cursor-not-allowed uppercase tracking-wider flex items-center justify-center gap-2"
               >
-                {loading ? "Creando Torneo..." : "Publicar Torneo"}
+                Siguiente: Formato del Torneo →
               </button>
+              <p className="text-center text-[11px] text-muted-foreground mt-2.5">
+                Paso 1 de 3 — Después configurarás el formato e invitarás equipos.
+              </p>
             </div>
           </form>
         </div>
