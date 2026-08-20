@@ -11,8 +11,8 @@ class EquipoRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def crear(self, datos: EquipoCreate) -> Equipo:
-        equipo = Equipo(**datos.model_dump())
+    async def crear(self, datos: EquipoCreate, creator_id: Optional[UUID] = None) -> Equipo:
+        equipo = Equipo(**datos.model_dump(), creator_id=creator_id)
         self.db.add(equipo)
         await self.db.commit()
         await self.db.refresh(equipo)

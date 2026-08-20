@@ -40,6 +40,7 @@ def test_crear_equipo_como_player(client):
     body = r.json()
     assert body["nombre"] == "Toros FC Test"
     assert body["color"] == "#991b1b"
+    assert body["creator_id"] is not None
     assert body["datos_adicionales"]["tipo_equipo"] == "varonil"
 
 
@@ -65,7 +66,6 @@ def test_crear_equipo_nombre_invalido(client):
         "Orga Invalido",
         "organizer"
     )
-    # Nombre de menos de 3 caracteres debe devolver 422
     r = client.post("/equipos/", json={
         "nombre": "AB",
         "color": "#111111"
@@ -73,77 +73,141 @@ def test_crear_equipo_nombre_invalido(client):
     assert r.status_code == 422
 
 
-def test_eliminar_equipo_como_player_devuelve_403(client):
-    # Un ORGANIZER crea el equipo
-    orga_headers = get_auth_headers(
+def test_otro_usuario_no_puede_modificar_ni_eliminar_equipo(client):
+    # Creador original crea el equipo
+    creador_headers = get_auth_headers(
         client,
-        "orga_del@example.com",
+        "creador_eq@example.com",
         "pass123",
-        "Orga Delete",
+        "Creador Equipo",
         "organizer"
     )
     r = client.post("/equipos/", json={
-        "nombre": "Equipo Borrable",
+        "nombre": "Equipo Privado",
         "color": "#222222"
-    }, headers=orga_headers)
+    }, headers=creador_headers)
     assert r.status_code == 201
     equipo_id = r.json()["id"]
 
-    # Un PLAYER intenta eliminarlo — debe fallar con 403
-    player_headers = get_auth_headers(
+    # Otro usuario (incluso con rol organizer) intenta editarlo -> 403
+    otro_headers = get_auth_headers(
         client,
-        "player_del@example.com",
+        "otro_orga@example.com",
         "pass123",
-        "Player Delete",
-        "player"
-    )
-    r = client.delete(f"/equipos/{equipo_id}", headers=player_headers)
-    assert r.status_code == 403
-
-
-def test_actualizar_equipo_como_player_devuelve_403(client):
-    orga_headers = get_auth_headers(
-        client,
-        "orga_upd@example.com",
-        "pass123",
-        "Orga Update",
+        "Otro Orga",
         "organizer"
     )
-    r = client.post("/equipos/", json={
-        "nombre": "Equipo Actualizable",
-        "color": "#333333"
-    }, headers=orga_headers)
-    assert r.status_code == 201
-    equipo_id = r.json()["id"]
-
-    # Un PLAYER intenta editarlo — debe fallar con 403
-    player_headers = get_auth_headers(
-        client,
-        "player_upd@example.com",
-        "pass123",
-        "Player Update",
-        "player"
-    )
-    r = client.put(f"/equipos/{equipo_id}", json={
+    r_put = client.put(f"/equipos/{equipo_id}", json={
         "nombre": "Equipo Hackeado"
-    }, headers=player_headers)
-    assert r.status_code == 403
+    }, headers=otro_headers)
+    assert r_put.status_code == 403
+
+    # Otro usuario intenta eliminarlo -> 403
+    r_del = client.delete(f"/equipos/{equipo_id}", headers=otro_headers)
+    assert r_del.status_code == 403
 
 
-def test_organizer_puede_eliminar_equipo(client):
-    orga_headers = get_auth_headers(
+def test_creador_y_admin_pueden_modificar_y_eliminar_equipo(client):
+    # Creador crea equipo
+    creador_headers = get_auth_headers(
         client,
-        "orga_ok_del@example.com",
+        "creador_owner@example.com",
         "pass123",
-        "Orga OK Delete",
-        "organizer"
+        "Owner Equipo",
+        "player"
     )
     r = client.post("/equipos/", json={
-        "nombre": "Equipo Temporal",
+        "nombre": "Equipo Owner",
         "color": "#444444"
-    }, headers=orga_headers)
+    }, headers=creador_headers)
     assert r.status_code == 201
     equipo_id = r.json()["id"]
 
-    r = client.delete(f"/equipos/{equipo_id}", headers=orga_headers)
-    assert r.status_code == 204
+    # Creador actualiza su equipo
+    r_put = client.put(f"/equipos/{equipo_id}", json={
+        "nombre": "Equipo Owner Modificado"
+    }, headers=creador_headers)
+    assert r_put.status_code == 200
+    assert r_put.json()["nombre"] == "Equipo Owner Modificado"
+
+    # Admin puede eliminarlo
+    admin_headers = get_auth_headers(
+        client,
+        "admin_eq@example.com",
+        "pass123",
+        "Admin",
+        "admin"
+    )
+    r_del = client.delete(f"/equipos/{equipo_id}", headers=admin_headers)
+    assert r_del.status_code == 204
+
+
+def test_gestion_jugadores_solo_por_creador_y_admin(client):
+    # Creador crea equipo
+    creador_headers = get_auth_headers(
+        client,
+        "creador_jugadores@example.com",
+        "pass123",
+        "Creador Jugadores",
+        "organizer"
+    )
+    r = client.post("/equipos/", json={
+        "nombre": "Equipo Con Jugadores",
+        "color": "#555555"
+    }, headers=creador_headers)
+    assert r.status_code == 201
+    equipo_id = r.json()["id"]
+
+    # Creador agrega un jugador
+    r_jugador = client.post(f"/equipos/{equipo_id}/jugadores", json={
+        "nombre": "Juan Perez",
+        "telefono": "5551234567",
+        "email": "juan@example.com"
+    }, headers=creador_headers)
+    assert r_jugador.status_code == 201
+    jugador_id = r_jugador.json()["id"]
+    assert r_jugador.json()["nombre"] == "Juan Perez"
+    assert r_jugador.json()["equipo_id"] == equipo_id
+
+    # Listar jugadores es público/accesible
+    r_list = client.get(f"/equipos/{equipo_id}/jugadores")
+    assert r_list.status_code == 200
+    assert len(r_list.json()) == 1
+
+    # Otro usuario intenta agregar un jugador -> 403
+    otro_headers = get_auth_headers(
+        client,
+        "otro_jugador_intruso@example.com",
+        "pass123",
+        "Intruso",
+        "organizer"
+    )
+    r_intr = client.post(f"/equipos/{equipo_id}/jugadores", json={
+        "nombre": "Intruso Jugador"
+    }, headers=otro_headers)
+    assert r_intr.status_code == 403
+
+    # Otro usuario intenta modificar al jugador -> 403
+    r_mod_intr = client.put(f"/equipos/{equipo_id}/jugadores/{jugador_id}", json={
+        "nombre": "Modificado Intruso"
+    }, headers=otro_headers)
+    assert r_mod_intr.status_code == 403
+
+    # Otro usuario intenta eliminar al jugador -> 403
+    r_del_intr = client.delete(f"/equipos/{equipo_id}/jugadores/{jugador_id}", headers=otro_headers)
+    assert r_del_intr.status_code == 403
+
+    # Creador modifica al jugador -> 200
+    r_mod_ok = client.put(f"/equipos/{equipo_id}/jugadores/{jugador_id}", json={
+        "nombre": "Juan Perez Actualizado"
+    }, headers=creador_headers)
+    assert r_mod_ok.status_code == 200
+    assert r_mod_ok.json()["nombre"] == "Juan Perez Actualizado"
+
+    # Creador elimina al jugador -> 204
+    r_del_ok = client.delete(f"/equipos/{equipo_id}/jugadores/{jugador_id}", headers=creador_headers)
+    assert r_del_ok.status_code == 204
+
+    # Verificar que la lista esté vacía
+    r_list2 = client.get(f"/equipos/{equipo_id}/jugadores")
+    assert len(r_list2.json()) == 0

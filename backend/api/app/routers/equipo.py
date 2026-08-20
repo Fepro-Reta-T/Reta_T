@@ -4,9 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import List
 from app.core.database import get_db
-from app.core.deps import get_current_user, require_role
+from app.core.deps import get_current_user
 from app.models.user import User, RoleEnum
 from app.schemas.equipo import EquipoCreate, EquipoUpdate, EquipoResponse
+from app.schemas.participante import ParticipanteCreate, ParticipanteUpdate, ParticipanteResponse
 from app.services.equipo_service import EquipoService
 from app.repositories.equipo_repository import EquipoRepository
 
@@ -22,7 +23,7 @@ async def crear_equipo(
     service: EquipoService = Depends(get_equipo_service)
 ):
     try:
-        return await service.crear(datos)
+        return await service.crear(datos, creator_id=current_user.id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
@@ -46,20 +47,100 @@ async def obtener_equipo(
 async def actualizar_equipo(
     equipo_id: UUID,
     datos: EquipoUpdate,
-    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
+    current_user: User = Depends(get_current_user),
     service: EquipoService = Depends(get_equipo_service)
 ):
-    equipo = await service.actualizar(equipo_id, datos)
+    equipo = await service.obtener(equipo_id)
     if not equipo:
         raise HTTPException(status_code=404, detail="Equipo no encontrado")
-    return equipo
+    if current_user.role != RoleEnum.ADMIN and equipo.creator_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para modificar este equipo"
+        )
+    return await service.actualizar(equipo_id, datos)
 
 @router.delete("/{equipo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def eliminar_equipo(
     equipo_id: UUID,
-    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
+    current_user: User = Depends(get_current_user),
     service: EquipoService = Depends(get_equipo_service)
 ):
-    eliminado = await service.eliminar(equipo_id)
-    if not eliminado:
+    equipo = await service.obtener(equipo_id)
+    if not equipo:
         raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    if current_user.role != RoleEnum.ADMIN and equipo.creator_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para eliminar este equipo"
+        )
+    await service.eliminar(equipo_id)
+
+# Endpoints de gestión de jugadores (Participantes)
+@router.post("/{equipo_id}/jugadores", response_model=ParticipanteResponse, status_code=status.HTTP_201_CREATED)
+async def agregar_jugador(
+    equipo_id: UUID,
+    datos: ParticipanteCreate,
+    current_user: User = Depends(get_current_user),
+    service: EquipoService = Depends(get_equipo_service)
+):
+    equipo = await service.obtener(equipo_id)
+    if not equipo:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    if current_user.role != RoleEnum.ADMIN and equipo.creator_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para agregar jugadores a este equipo"
+        )
+    return await service.agregar_participante(equipo_id, datos)
+
+@router.get("/{equipo_id}/jugadores", response_model=List[ParticipanteResponse])
+async def listar_jugadores(
+    equipo_id: UUID,
+    service: EquipoService = Depends(get_equipo_service)
+):
+    equipo = await service.obtener(equipo_id)
+    if not equipo:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    return await service.listar_participantes(equipo_id)
+
+@router.put("/{equipo_id}/jugadores/{jugador_id}", response_model=ParticipanteResponse)
+async def actualizar_jugador(
+    equipo_id: UUID,
+    jugador_id: UUID,
+    datos: ParticipanteUpdate,
+    current_user: User = Depends(get_current_user),
+    service: EquipoService = Depends(get_equipo_service)
+):
+    equipo = await service.obtener(equipo_id)
+    if not equipo:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    if current_user.role != RoleEnum.ADMIN and equipo.creator_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para modificar jugadores de este equipo"
+        )
+    jugador = await service.actualizar_participante(jugador_id, datos)
+    if not jugador or jugador.equipo_id != equipo_id:
+        raise HTTPException(status_code=404, detail="Jugador no encontrado en este equipo")
+    return jugador
+
+@router.delete("/{equipo_id}/jugadores/{jugador_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def eliminar_jugador(
+    equipo_id: UUID,
+    jugador_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: EquipoService = Depends(get_equipo_service)
+):
+    equipo = await service.obtener(equipo_id)
+    if not equipo:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    if current_user.role != RoleEnum.ADMIN and equipo.creator_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para eliminar jugadores de este equipo"
+        )
+    jugador = await service.obtener_participante(jugador_id)
+    if not jugador or jugador.equipo_id != equipo_id:
+        raise HTTPException(status_code=404, detail="Jugador no encontrado en este equipo")
+    await service.eliminar_participante(jugador_id)

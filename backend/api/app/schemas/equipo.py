@@ -21,6 +21,7 @@ class EquipoUpdate(BaseModel):
 
 class EquipoResponse(EquipoBase):
     id: UUID
+    creator_id: Optional[UUID] = None
     datos_adicionales: Optional[dict] = None
 
     model_config = ConfigDict(from_attributes=True)

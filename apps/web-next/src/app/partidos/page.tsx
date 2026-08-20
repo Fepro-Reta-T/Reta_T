@@ -12,18 +12,19 @@ export default function PartidosPage() {
     return false;
   });
 
-  const [isOrganizer] = useState(() => {
+  const [currentUser] = useState<{ id?: string; role?: string } | null>(() => {
     if (typeof window !== "undefined") {
       const userStr = localStorage.getItem("user");
       if (userStr) {
         try {
-          const u = JSON.parse(userStr);
-          return u.role === "organizer" || u.role === "admin";
+          return JSON.parse(userStr);
         } catch {}
       }
     }
-    return false;
+    return null;
   });
+
+  const isOrganizer = !isInvitado && !!currentUser;
 
   return (
     <AppLayout>

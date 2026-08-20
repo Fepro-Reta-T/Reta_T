@@ -23,8 +23,11 @@ class Equipo(Base):
     color = Column(String, nullable=True)
     logo_url = Column(String, nullable=True)
     datos_adicionales = Column(JSON, nullable=True)
+    creator_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+
+    creator = relationship("User", backref="equipos_creados")
     torneos = relationship("Tournament", secondary=inscripcion_table, back_populates="equipos")
-    participantes = relationship("Participante", back_populates="equipo")
+    participantes = relationship("Participante", back_populates="equipo", cascade="all, delete-orphan")
     partidos_locales = relationship("Partido", foreign_keys="Partido.equipo_local_id", back_populates="equipo_local")
     partidos_visitantes = relationship("Partido", foreign_keys="Partido.equipo_visitante_id", back_populates="equipo_visitante")
 

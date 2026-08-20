@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import List
 from app.core.database import get_db
-from app.core.deps import require_role
+from app.core.deps import get_current_user
 from app.models.user import User, RoleEnum
 from app.schemas.torneo import TorneoCreate, TorneoUpdate, TorneoResponse
 from app.schemas.equipo import EquipoResponse
@@ -19,7 +19,7 @@ def get_torneo_service(db: AsyncSession = Depends(get_db)) -> TorneoService:
 @router.post("/", response_model=TorneoResponse, status_code=status.HTTP_201_CREATED)
 async def crear_torneo(
     datos: TorneoCreate,
-    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
+    current_user: User = Depends(get_current_user),
     service: TorneoService = Depends(get_torneo_service)
 ):
     return await service.crear(datos, current_user.id)
@@ -45,32 +45,51 @@ async def obtener_torneo(
 async def actualizar_torneo(
     torneo_id: UUID,
     datos: TorneoUpdate,
-    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
+    current_user: User = Depends(get_current_user),
     service: TorneoService = Depends(get_torneo_service)
 ):
-    torneo = await service.actualizar(torneo_id, datos)
+    torneo = await service.obtener(torneo_id)
     if not torneo:
         raise HTTPException(status_code=404, detail="Torneo no encontrado")
-    return torneo
+    if current_user.role != RoleEnum.ADMIN and torneo.organizer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para modificar este torneo"
+        )
+    return await service.actualizar(torneo_id, datos)
 
 @router.delete("/{torneo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def eliminar_torneo(
     torneo_id: UUID,
-    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
+    current_user: User = Depends(get_current_user),
     service: TorneoService = Depends(get_torneo_service)
 ):
-    eliminado = await service.eliminar(torneo_id)
-    if not eliminado:
+    torneo = await service.obtener(torneo_id)
+    if not torneo:
         raise HTTPException(status_code=404, detail="Torneo no encontrado")
+    if current_user.role != RoleEnum.ADMIN and torneo.organizer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para eliminar este torneo"
+        )
+    await service.eliminar(torneo_id)
 
 # ✅ AGREGADOS: Endpoints de inscripción
 @router.post("/{torneo_id}/inscripciones", status_code=status.HTTP_201_CREATED)
 async def inscribir_equipo(
     torneo_id: UUID,
     equipo_id: UUID,
-    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
+    current_user: User = Depends(get_current_user),
     service: TorneoService = Depends(get_torneo_service)
 ):
+    torneo = await service.obtener(torneo_id)
+    if not torneo:
+        raise HTTPException(status_code=404, detail="Torneo no encontrado")
+    if current_user.role != RoleEnum.ADMIN and torneo.organizer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para inscribir equipos en este torneo"
+        )
     resultado = await service.inscribir_equipo(torneo_id, equipo_id)
     if not resultado:
         raise HTTPException(
@@ -91,9 +110,17 @@ async def listar_equipos_inscritos(
 async def retirar_equipo(
     torneo_id: UUID,
     equipo_id: UUID,
-    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
+    current_user: User = Depends(get_current_user),
     service: TorneoService = Depends(get_torneo_service)
 ):
+    torneo = await service.obtener(torneo_id)
+    if not torneo:
+        raise HTTPException(status_code=404, detail="Torneo no encontrado")
+    if current_user.role != RoleEnum.ADMIN and torneo.organizer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para retirar equipos de este torneo"
+        )
     resultado = await service.retirar_equipo(torneo_id, equipo_id)
     if not resultado:
         raise HTTPException(

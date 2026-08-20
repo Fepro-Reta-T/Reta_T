@@ -34,7 +34,7 @@ def test_crear_y_listar_canchas(client):
     assert r.status_code == 201
     muni_id = r.json()["id"]
 
-    # 2. Intentar crear cancha como PLAYER (debe fallar 403)
+    # 2. Intentar crear cancha como PLAYER (debe pasar)
     r = client.post("/canchas/", json={
         "nombre": "Cancha Falla",
         "direccion": "Calle Falsa 123",
@@ -43,7 +43,7 @@ def test_crear_y_listar_canchas(client):
         "capacidad": 50,
         "municipio_id": muni_id
     }, headers=player_headers)
-    assert r.status_code == 403
+    assert r.status_code == 201
 
     # 3. Crear cancha como ORGANIZER (debe pasar)
     r = client.post("/canchas/", json={
