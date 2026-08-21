@@ -211,3 +211,48 @@ def test_gestion_jugadores_solo_por_creador_y_admin(client):
     # Verificar que la lista esté vacía
     r_list2 = client.get(f"/equipos/{equipo_id}/jugadores")
     assert len(r_list2.json()) == 0
+
+
+def test_transferir_equipo(client):
+    orga_headers = get_auth_headers(
+        client,
+        "orga_creador@example.com",
+        "pass123",
+        "Orga Creador",
+        "organizer"
+    )
+    nuevo_coach_email = "nuevo_coach@example.com"
+    nuevo_coach_headers = get_auth_headers(
+        client,
+        nuevo_coach_email,
+        "pass123",
+        "Nuevo Coach",
+        "player"
+    )
+
+    # Orga crea equipo
+    r_equipo = client.post("/equipos/", json={
+        "nombre": "Equipo a Transferir",
+        "color": "#123456"
+    }, headers=orga_headers)
+    assert r_equipo.status_code == 201
+    equipo_id = r_equipo.json()["id"]
+
+    # Orga transfiere el equipo al nuevo coach
+    r_transf = client.patch(f"/equipos/{equipo_id}/transferir", json={
+        "email": nuevo_coach_email
+    }, headers=orga_headers)
+    assert r_transf.status_code == 200
+    
+    # Verificar que el nuevo coach ahora puede modificar el equipo
+    r_put_nuevo_coach = client.put(f"/equipos/{equipo_id}", json={
+        "nombre": "Equipo Transferido"
+    }, headers=nuevo_coach_headers)
+    assert r_put_nuevo_coach.status_code == 200
+    assert r_put_nuevo_coach.json()["nombre"] == "Equipo Transferido"
+    
+    # Orga original ya NO puede modificar el equipo
+    r_put_orga_fail = client.put(f"/equipos/{equipo_id}", json={
+        "nombre": "Intentando recuperar"
+    }, headers=orga_headers)
+    assert r_put_orga_fail.status_code == 403

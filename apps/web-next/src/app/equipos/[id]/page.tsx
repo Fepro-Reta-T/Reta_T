@@ -82,7 +82,14 @@ export default function GestionEquipoCoachPage() {
   const [modalAgregarJugadorOpen, setModalAgregarJugadorOpen] = useState(false);
   const [modalEditarEquipoOpen, setModalEditarEquipoOpen] = useState(false);
   const [modalEliminarEquipoOpen, setModalEliminarEquipoOpen] = useState(false);
+  const [modalTransferirEquipoOpen, setModalTransferirEquipoOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Transferencia de equipo
+  const [emailTransferir, setEmailTransferir] = useState("");
+  const [transfiriendo, setTransfiriendo] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
+  const [transferSuccess, setTransferSuccess] = useState<string | null>(null);
 
   // Formulario nuevo jugador
   const [nuevoNombre, setNuevoNombre] = useState("");
@@ -328,6 +335,21 @@ export default function GestionEquipoCoachPage() {
               className="flex-1 sm:flex-none px-6 py-3.5 bg-secondary hover:bg-secondary/80 text-foreground border border-secondary font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-md text-center"
             >
               Editar Club
+            </button>
+          )}
+
+          {!isInvitado && (isCreador || currentUser?.role === "admin") && (
+            <button
+              type="button"
+              onClick={() => {
+                setTransferError(null);
+                setTransferSuccess(null);
+                setEmailTransferir("");
+                setModalTransferirEquipoOpen(true);
+              }}
+              className="flex-1 sm:flex-none px-6 py-3.5 bg-secondary hover:bg-secondary/80 text-foreground border border-secondary font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-md text-center"
+            >
+              Transferir Propiedad
             </button>
           )}
         </div>
@@ -663,6 +685,107 @@ export default function GestionEquipoCoachPage() {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL TRANSFERIR PROPIEDAD DEL EQUIPO */}
+        {modalTransferirEquipoOpen && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-card rounded-3xl border border-secondary max-w-md w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center pb-3 border-b border-secondary">
+                <div>
+                  <h3 className="text-xl font-black text-foreground tracking-tight">
+                    Transferir Equipo
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Cede la administración de este club a otro usuario o coach.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModalTransferirEquipoOpen(false)}
+                  disabled={transfiriendo}
+                  className="text-muted-foreground hover:text-foreground text-xl font-bold p-1 disabled:opacity-50"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {transferError && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-xs font-semibold rounded-2xl">
+                  {transferError}
+                </div>
+              )}
+
+              {transferSuccess && (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold rounded-2xl">
+                  {transferSuccess}
+                </div>
+              )}
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!emailTransferir.trim()) return;
+                  setTransfiriendo(true);
+                  setTransferError(null);
+                  setTransferSuccess(null);
+                  try {
+                    await equiposApi.transferir(equipoId, emailTransferir.trim());
+                    setTransferSuccess(`¡Equipo transferido exitosamente a ${emailTransferir.trim()}!`);
+                    setTimeout(() => {
+                      router.push("/equipos");
+                    }, 1500);
+                  } catch (err: any) {
+                    console.error(err);
+                    setTransferError(err.message || "Error al transferir. Asegúrate de que el correo pertenezca a un usuario registrado.");
+                  } finally {
+                    setTransfiriendo(false);
+                  }
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <label className="block text-xs font-extrabold uppercase tracking-wider text-muted-foreground">
+                    Correo del nuevo Administrador / Coach
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="coach@example.com"
+                    value={emailTransferir}
+                    onChange={(e) => setEmailTransferir(e.target.value)}
+                    disabled={transfiriendo || Boolean(transferSuccess)}
+                    className="w-full bg-background border border-secondary rounded-2xl px-4 py-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary transition-colors"
+                  />
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Al confirmar la transferencia, el nuevo usuario tendrá el control total del equipo y tú dejarás de ser el propietario.
+                  </p>
+                </div>
+
+                <div className="pt-3 border-t border-secondary flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setModalTransferirEquipoOpen(false)}
+                    disabled={transfiriendo}
+                    className="flex-1 py-3 bg-secondary text-foreground rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-secondary/80 transition-colors disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={transfiriendo || !emailTransferir.trim() || Boolean(transferSuccess)}
+                    className="flex-1 py-3 bg-primary hover:bg-primary-light disabled:opacity-50 text-primary-foreground rounded-xl font-black text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2"
+                  >
+                    {transfiriendo ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      "Transferir"
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

@@ -66,9 +66,6 @@ export default function EquiposTorneoPage() {
   const [paso1, setPaso1] = useState<Record<string, string> | null>(null);
   const [paso2, setPaso2] = useState<Record<string, any> | null>(null);
 
-  const [equipos, setEquipos] = useState<Equipo[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [loadingEquipos, setLoadingEquipos] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,29 +76,9 @@ export default function EquiposTorneoPage() {
     if (!parsed.paso1 || !parsed.paso2) { router.replace("/torneos/nuevo/formato"); return; }
     setPaso1(parsed.paso1);
     setPaso2(parsed.paso2);
-    cargarEquipos();
   }, [router]);
 
-  async function cargarEquipos() {
-    try {
-      const data = await equiposApi.listar();
-      setEquipos(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingEquipos(false);
-    }
-  }
-
-  function toggleEquipo(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }
-
-  async function handlePublicar(overrideEquipos?: string[]) {
+  async function handlePublicar() {
     if (!paso1 || !paso2) return;
 
     const userStr = localStorage.getItem("user");
@@ -114,22 +91,23 @@ export default function EquiposTorneoPage() {
     setPublishing(true);
     setError(null);
 
-    const equipoIdsToSave = overrideEquipos !== undefined ? overrideEquipos : [...selectedIds];
-
     try {
-      await torneosApi.crear({
+      const res = await torneosApi.crear({
         nombre: paso1.nombre,
         categoria: paso1.categoria,
         sport_id: paso1.sport_id,
+        max_equipos: paso2.num_equipos,
         datos_adicionales: {
           imagen_portada: paso1.imagen_portada,
           formato: paso2,
-          equipo_ids: equipoIdsToSave,
+          equipo_ids: [],
+          descripcion: paso2.descripcion ?? "",
           reglas: paso2.reglas ?? "",
+          sport_nombre: paso1.sport_nombre,
         },
       });
       sessionStorage.removeItem("torneo_wizard_draft");
-      router.push("/torneos");
+      router.push(`/torneos/${res.id}?created=true`); // Redirigir al dashboard con flag created
     } catch (err: any) {
       const msg = err?.message || err?.detail || "Error al crear el torneo";
       setError(typeof msg === "string" ? msg : JSON.stringify(msg));
@@ -156,23 +134,15 @@ export default function EquiposTorneoPage() {
             >
               ← Regresar a Formato
             </button>
-            <button
-              type="button"
-              onClick={() => handlePublicar([])}
-              disabled={publishing}
-              className="inline-flex items-center gap-1.5 min-h-[40px] px-4 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary font-bold text-sm transition-colors disabled:opacity-50"
-            >
-              Omitir este paso →
-            </button>
           </div>
 
           {/* Encabezado */}
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-              Invitar Equipos
+              Confirmar y Publicar
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Selecciona los equipos que participarán o publícalo vacío para que se inscriban después.
+              Revisa los detalles de tu torneo. Una vez publicado, podrás obtener el enlace mágico para invitar a los equipos a inscribirse.
             </p>
           </div>
 
@@ -204,104 +174,59 @@ export default function EquiposTorneoPage() {
             </div>
           </div>
 
-          {/* Selección de Equipos */}
-          <div className="bg-card rounded-2xl border border-secondary shadow-sm overflow-hidden">
-            <div className="px-5 pt-5 pb-3 border-b border-secondary flex items-center justify-between">
+          {/* Detalles de Configuración */}
+          <div className="bg-card border border-secondary rounded-3xl p-5 space-y-4 shadow-sm">
+            <h3 className="font-black text-foreground text-sm uppercase tracking-wider mb-2 border-b border-secondary pb-2">
+              Detalles de Configuración
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <h2 className="font-black text-foreground text-sm uppercase tracking-wider">
-                  Equipos Disponibles
-                </h2>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {selectedIds.size > 0
-                    ? `${selectedIds.size} equipo${selectedIds.size !== 1 ? "s" : ""} seleccionado${selectedIds.size !== 1 ? "s" : ""}`
-                    : "Opcional — puedes publicar sin equipos"}
-                </p>
+                <span className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Límite de Equipos
+                </span>
+                <span className="block text-sm font-black text-primary mt-1">
+                  {paso2.num_equipos ? `${paso2.num_equipos} Equipos Máximo` : "Sin Límite"}
+                </span>
               </div>
-              {selectedIds.size > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedIds(new Set())}
-                  className="text-[10px] font-semibold text-muted-foreground hover:text-foreground"
-                >
-                  Limpiar
-                </button>
-              )}
             </div>
 
-            {loadingEquipos ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-3 border-primary border-t-transparent" />
+            {paso2.descripcion && (
+              <div>
+                <span className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Descripción
+                </span>
+                <p className="text-xs text-foreground mt-1 line-clamp-3">
+                  {paso2.descripcion}
+                </p>
               </div>
-            ) : equipos.length === 0 ? (
-              <div className="text-center py-12 text-[11px] text-muted-foreground px-5">
-                No hay equipos registrados aún. El torneo se publicará abierto a inscripciones.
-              </div>
-            ) : (
-              <div className="divide-y divide-secondary">
-                {equipos.map((equipo) => {
-                  const isSelected = selectedIds.has(equipo.id);
-                  const clubColor = equipo.color || "#6b7280";
-                  const tipoEquipo = equipo.datos_adicionales?.tipo_equipo || "Club";
-                  const badgeClass = getCategoryBadgeClass(tipoEquipo);
-                  return (
-                    <button
-                      key={equipo.id}
-                      type="button"
-                      onClick={() => toggleEquipo(equipo.id)}
-                      className={`w-full flex items-center gap-4 px-5 py-3.5 text-left transition-colors ${
-                        isSelected ? "bg-primary/5" : "hover:bg-secondary/30"
-                      }`}
-                    >
-                      {/* Checkbox visual */}
-                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                        isSelected ? "bg-primary border-primary" : "border-secondary bg-background"
-                      }`}>
-                        {isSelected && (
-                          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </div>
+            )}
 
-                      {/* Logo */}
-                      <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
-                        {equipo.logo_url ? (
-                          <img src={equipo.logo_url} alt={equipo.nombre} className="w-10 h-10 object-contain" />
-                        ) : (
-                          <div
-                            className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-white text-sm shadow"
-                            style={{ backgroundColor: clubColor }}
-                          >
-                            {equipo.nombre.charAt(0)}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-foreground text-sm truncate">{equipo.nombre}</div>
-                        <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full border inline-block mt-0.5 ${badgeClass}`}>
-                          {tipoEquipo}
-                        </span>
-                      </div>
-
-                      {isSelected && (
-                        <div className="flex-shrink-0 text-primary">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5l-4-4 1.41-1.41L10 13.67l6.59-6.59L18 8.5l-8 8z" />
-                          </svg>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+            {paso2.reglas && (
+              <div>
+                <span className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                  Reglas Adicionales
+                </span>
+                <p className="text-xs text-foreground mt-1 line-clamp-3">
+                  {paso2.reglas}
+                </p>
               </div>
             )}
           </div>
 
+          {/* Explicación del nuevo flujo */}
+          <div className="bg-primary/10 border border-primary/20 rounded-2xl p-5 shadow-sm">
+            <h3 className="font-black text-primary text-sm uppercase tracking-wider mb-2">
+              ¿Cómo invito a los equipos?
+            </h3>
+            <p className="text-xs text-primary/80 leading-relaxed">
+              En esta nueva versión, ya no seleccionas los equipos manualmente aquí. En su lugar, al publicar el torneo, se generará un <strong>enlace mágico de invitación</strong> en tu panel de control. Podrás compartir ese enlace por WhatsApp o redes sociales para que los equipos se inscriban ellos mismos.
+            </p>
+          </div>
+
           {/* Error */}
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-sm text-red-600 font-medium">
+            <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 text-sm text-destructive font-medium">
               {error}
             </div>
           )}
@@ -310,7 +235,7 @@ export default function EquiposTorneoPage() {
           <div className="pt-2 space-y-3">
             <button
               type="button"
-              onClick={() => handlePublicar()}
+              onClick={handlePublicar}
               disabled={publishing}
               className="w-full min-h-[52px] py-4 bg-primary hover:bg-primary-light text-primary-foreground rounded-2xl font-black text-base shadow-xl hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider flex items-center justify-center gap-2"
             >
@@ -320,26 +245,9 @@ export default function EquiposTorneoPage() {
                   Publicando Torneo...
                 </>
               ) : (
-                <>
-                  {selectedIds.size > 0
-                    ? `Publicar con ${selectedIds.size} equipo${selectedIds.size !== 1 ? "s" : ""}`
-                    : "Publicar Torneo (sin equipos aún)"}
-                </>
+                "Publicar Torneo"
               )}
             </button>
-
-            <button
-              type="button"
-              onClick={() => handlePublicar([])}
-              disabled={publishing}
-              className="w-full min-h-[44px] py-3 bg-secondary hover:bg-secondary/80 text-foreground rounded-2xl font-bold text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              Omitir paso e invitar equipos después
-            </button>
-
-            <p className="text-center text-[11px] text-muted-foreground">
-              Los equipos no seleccionados podrán inscribirse o ser añadidos después desde la vista del torneo.
-            </p>
           </div>
 
         </div>

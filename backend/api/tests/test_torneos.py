@@ -140,3 +140,65 @@ def test_inscripciones_torneo_solo_por_organizador_creador(client):
         headers=orga1_headers
     )
     assert r_ret_orga1.status_code == 204
+
+
+def test_flujo_solicitudes_inscripcion(client):
+    orga1_headers = get_auth_headers(
+        client,
+        "orga_solic@example.com",
+        "pass123",
+        "Orga Solic",
+        "organizer"
+    )
+    capitan_headers = get_auth_headers(
+        client,
+        "capitan_solic@example.com",
+        "pass123",
+        "Capitan",
+        "player"
+    )
+
+    # Orga crea torneo
+    torneo = client.post("/torneos/", json={
+        "nombre": "Copa Invitaciones",
+        "categoria": "mixto",
+        "sport_id": str(uuid.uuid4()),
+        "max_equipos": 2
+    }, headers=orga1_headers).json()
+    torneo_id = torneo["id"]
+
+    # Capitan crea equipo
+    equipo = client.post("/equipos/", json={
+        "nombre": "Los Mix",
+        "color": "#123456",
+        "datos_adicionales": {"tipo_equipo": "mixto"}
+    }, headers=capitan_headers).json()
+    equipo_id = equipo["id"]
+
+    # Capitan envia solicitud
+    r_solic = client.post(
+        f"/torneos/{torneo_id}/solicitudes",
+        json={"equipo_id": equipo_id},
+        headers=capitan_headers
+    )
+    assert r_solic.status_code == 201
+
+    # Orga lista solicitudes
+    r_listar = client.get(f"/torneos/{torneo_id}/solicitudes", headers=orga1_headers)
+    assert r_listar.status_code == 200
+    solicitudes = r_listar.json()
+    assert len(solicitudes) == 1
+    assert solicitudes[0]["estado"] == "PENDIENTE"
+
+    # Orga acepta solicitud
+    r_aceptar = client.patch(
+        f"/torneos/{torneo_id}/solicitudes/{equipo_id}",
+        json={"accion": "ACEPTAR"},
+        headers=orga1_headers
+    )
+    assert r_aceptar.status_code == 200
+
+    # Verificar que el equipo esta inscrito
+    r_equipos = client.get(f"/torneos/{torneo_id}/equipos")
+    assert r_equipos.status_code == 200
+    assert len(r_equipos.json()) == 1

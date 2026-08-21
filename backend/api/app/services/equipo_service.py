@@ -43,6 +43,9 @@ class EquipoService:
     async def eliminar(self, equipo_id: UUID) -> bool:
         return await self.repo.eliminar(equipo_id)
 
+    async def transferir(self, equipo_id: UUID, nuevo_creator_id: UUID) -> Optional[Equipo]:
+        return await self.repo.transferir(equipo_id, nuevo_creator_id)
+
     # Métodos de gestión de jugadores (Participantes)
     async def agregar_participante(self, equipo_id: UUID, datos: ParticipanteCreate) -> Participante:
         return await self.participante_repo.crear(equipo_id, datos)

@@ -164,3 +164,12 @@ Todo endpoint de estadísticas requiere login (`Depends(get_current_user)`), sin
   definido (¿radio de búsqueda?, ¿geolocalización del navegador o dirección manual?, ¿PostGIS o alcanza con
   lat/lng + fórmula de distancia?). No construir esto hasta que se actualice esta sección.
 - **Recuperar contraseña**: mencionado en el PDF, todavía sin diseñar el flujo (email con link, código, etc.)
+
+## 11. Flujo de Inscripción de Equipos (Decisión Arquitectónica)
+
+Existen dos vías oficiales para inscribir un equipo a un torneo, diseñadas para ser flexibles y no excluir a equipos que no usen tecnología:
+
+1. **Inscripción por Enlace (Flujo de Aprobación):** El organizador comparte un enlace público del torneo (ej. `/torneos/[id]/unirse`). Los capitanes de equipo abren el link, inician sesión en la app, seleccionan su equipo (que obligatoriamente debe coincidir con la categoría del torneo) y envían una `SolicitudInscripcion`. El equipo queda en estado `PENDIENTE` hasta que el organizador lo aprueba o rechaza en su panel.
+2. **Inscripción Manual (Equipos Locales/Desconectados):** El organizador conserva la facultad de crear un perfil de equipo manualmente e inscribirlo directo al torneo, saltándose el flujo de solicitud. Esto asegura que la liga no se detenga por usuarios que no usan la app.
+
+**Límite de Inscripción (Caducidad):** Todo torneo debe tener configurado un límite de inscripción (por fecha de cierre o por cupo máximo de equipos). Una vez alcanzado este límite, el enlace de invitación dejará de aceptar nuevas solicitudes automáticamente.

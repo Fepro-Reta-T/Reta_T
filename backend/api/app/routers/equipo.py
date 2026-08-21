@@ -6,7 +6,8 @@ from typing import List
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.user import User, RoleEnum
-from app.schemas.equipo import EquipoCreate, EquipoUpdate, EquipoResponse
+from app.schemas.equipo import EquipoCreate, EquipoUpdate, EquipoResponse, EquipoTransferirRequest
+from app.repositories.user import get_user_by_email
 from app.schemas.participante import ParticipanteCreate, ParticipanteUpdate, ParticipanteResponse
 from app.services.equipo_service import EquipoService
 from app.repositories.equipo_repository import EquipoRepository
@@ -75,6 +76,31 @@ async def eliminar_equipo(
             detail="No tienes permiso para eliminar este equipo"
         )
     await service.eliminar(equipo_id)
+
+@router.patch("/{equipo_id}/transferir", response_model=EquipoResponse)
+async def transferir_equipo(
+    equipo_id: UUID,
+    datos: EquipoTransferirRequest,
+    current_user: User = Depends(get_current_user),
+    service: EquipoService = Depends(get_equipo_service),
+    db: AsyncSession = Depends(get_db)
+):
+    equipo = await service.obtener(equipo_id)
+    if not equipo:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    if current_user.role != RoleEnum.ADMIN and equipo.creator_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para transferir este equipo"
+        )
+    
+    nuevo_dueño = await get_user_by_email(db, datos.email)
+    if not nuevo_dueño:
+        raise HTTPException(status_code=404, detail=f"No se encontró un usuario con el correo {datos.email}")
+        
+    equipo_transferido = await service.transferir(equipo_id, nuevo_dueño.id)
+    return equipo_transferido
+
 
 # Endpoints de gestión de jugadores (Participantes)
 @router.post("/{equipo_id}/jugadores", response_model=ParticipanteResponse, status_code=status.HTTP_201_CREATED)

@@ -22,6 +22,10 @@ export function createEquiposApi(client: ApiClient) {
     eliminar: (id: string): Promise<void> => {
       return client.delete<void>(`/equipos/${id}`);
     },
+
+    transferir: (id: string, email: string): Promise<Equipo> => {
+      return client.patch<Equipo>(`/equipos/${id}/transferir`, { email });
+    },
   };
 }
 

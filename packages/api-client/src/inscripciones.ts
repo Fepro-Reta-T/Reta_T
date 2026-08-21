@@ -14,6 +14,18 @@ export function createInscripcionesApi(client: ApiClient) {
     retirar: (torneoId: string, equipoId: string): Promise<void> => {
       return client.delete(`/torneos/${torneoId}/inscripciones/${equipoId}`) as Promise<void>;
     },
+
+    crearSolicitud: (torneoId: string, equipoId: string): Promise<{message: string}> => {
+      return client.post(`/torneos/${torneoId}/solicitudes`, { equipo_id: equipoId }) as Promise<{message: string}>;
+    },
+
+    listarSolicitudes: (torneoId: string): Promise<any[]> => {
+      return client.get(`/torneos/${torneoId}/solicitudes`) as Promise<any[]>;
+    },
+
+    procesarSolicitud: (torneoId: string, equipoId: string, accion: "ACEPTAR" | "RECHAZAR"): Promise<{message: string}> => {
+      return client.patch(`/torneos/${torneoId}/solicitudes/${equipoId}`, { accion }) as Promise<{message: string}>;
+    },
   };
 }
 

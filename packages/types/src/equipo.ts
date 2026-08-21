@@ -21,3 +21,7 @@ export interface EquipoActualizarPayload {
   logo_url?: string | null;
   datos_adicionales?: Record<string, any>;
 }
+
+export interface EquipoTransferirPayload {
+  email: string;
+}

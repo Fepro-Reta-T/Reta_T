@@ -6,6 +6,7 @@ import Link from "next/link";
 import { torneosApi, inscripcionesApi, partidosApi } from "@/lib/api";
 import type { Torneo, Equipo, Partido } from "@reta-t/types";
 import AppLayout from "@/components/AppLayout";
+import { BracketPreview } from "@/components/BracketPreview";
 
 function getCategoryBadgeClass(categoria: string) {
   const cat = (categoria || "").toLowerCase();
@@ -30,7 +31,7 @@ export default function DetalleTorneoPage() {
   const [equipos, setEquipos] = useState<Equipo[]>([]);
   const [partidos, setPartidos] = useState<Partido[]>([]);
   const [loading, setLoading] = useState(true);
-  const [generandoFixture, setGenerandoFixture] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   // Modales de Expansión Completa
@@ -39,7 +40,15 @@ export default function DetalleTorneoPage() {
   const [modalPosicionesOpen, setModalPosicionesOpen] = useState(false);
   const [modalGoleoOpen, setModalGoleoOpen] = useState(false);
   const [modalEliminarOpen, setModalEliminarOpen] = useState(false);
+  const [modalInvitarOpen, setModalInvitarOpen] = useState(false);
+  const [modalSolicitudesOpen, setModalSolicitudesOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+
+  // Solicitudes de inscripción
+  const [solicitudes, setSolicitudes] = useState<any[]>([]);
+  const [loadingSolicitudes, setLoadingSolicitudes] = useState(false);
+  const [procesandoSolicitudId, setProcesandoSolicitudId] = useState<string | null>(null);
 
   const [isInvitado] = useState(() => {
     if (typeof window !== "undefined") {
@@ -83,6 +92,22 @@ export default function DetalleTorneoPage() {
         setEquipos(equiposInscritos);
         setPartidos(partidosTorneo);
         setError(null);
+
+        // Cargar solicitudes si es organizador/admin
+        if (
+          !isInvitado &&
+          currentUser &&
+          (currentUser.role === "admin" ||
+            currentUser.role === "organizer" ||
+            torneoData.organizer_id === currentUser.id)
+        ) {
+          try {
+            const sols = await inscripcionesApi.listarSolicitudes(torneoId);
+            setSolicitudes(sols);
+          } catch {
+            setSolicitudes([]);
+          }
+        }
       } catch (err) {
         setError("Error al cargar los datos del torneo");
         console.error(err);
@@ -94,25 +119,44 @@ export default function DetalleTorneoPage() {
     if (torneoId) {
       cargarDatos();
     }
-  }, [torneoId]);
+  }, [torneoId, isInvitado, currentUser]);
 
-  async function handleGenerarFixture() {
-    if (equipos.length < 2) {
-      alert("Se necesitan al menos 2 equipos inscritos para generar un fixture.");
-      return;
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get("created") === "true") {
+        setModalInvitarOpen(true);
+        // Limpiamos el query param sin recargar
+        router.replace(`/torneos/${torneoId}`);
+      }
     }
-    setGenerandoFixture(true);
-    try {
-      const nuevosPartidos = await partidosApi.generarFixture(torneoId);
-      setPartidos(nuevosPartidos);
-      alert(`¡Fixture generado con éxito! Se crearon ${nuevosPartidos.length} partidos automáticamente.`);
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || "Error al generar el fixture");
-    } finally {
-      setGenerandoFixture(false);
+  }, [torneoId, router]);
+
+  async function handleCopiarEnlace() {
+    if (typeof window !== "undefined") {
+      const url = `${window.location.origin}/torneos/${torneoId}/unirse`;
+      await navigator.clipboard.writeText(url);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2500);
     }
   }
+
+  async function handleProcesarSolicitud(equipoId: string, accion: "ACEPTAR" | "RECHAZAR") {
+    try {
+      setProcesandoSolicitudId(equipoId);
+      await inscripcionesApi.procesarSolicitud(torneoId, equipoId, accion);
+      const nuevasSolicitudes = await inscripcionesApi.listarSolicitudes(torneoId);
+      setSolicitudes(nuevasSolicitudes);
+      const equiposActualizados = await inscripcionesApi.listarEquiposInscritos(torneoId);
+      setEquipos(equiposActualizados);
+    } catch (err: any) {
+      alert(err.message || "Error al procesar la solicitud");
+      console.error(err);
+    } finally {
+      setProcesandoSolicitudId(null);
+    }
+  }
+
 
   async function handleConfirmEliminar() {
     setDeleting(true);
@@ -277,68 +321,71 @@ export default function DetalleTorneoPage() {
           </div>
         </div>
 
-        {/* BARRA DE ACCIONES PRINCIPALES */}
-        <div className="flex flex-wrap items-center gap-3 bg-card p-4 rounded-3xl border border-secondary shadow-sm">
-          {!isInvitado && (
-            <Link
-              href={`/torneos/${torneo.id}/inscribir`}
-              className="flex-1 sm:flex-none min-h-[44px] px-6 py-3 bg-primary hover:bg-primary-light text-primary-foreground font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-md text-center flex items-center justify-center gap-2"
+        {/* DETALLES GENERALES */}
+        <div className="bg-card rounded-3xl border border-secondary p-5 shadow-sm space-y-3">
+          <h3 className="text-sm font-black uppercase tracking-wider text-muted-foreground border-b border-secondary pb-2">
+            Detalles Generales del Torneo
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <span className="block text-[10px] font-bold text-muted-foreground uppercase">Deporte</span>
+              <span className="block text-sm font-black text-foreground mt-0.5">{torneo.sport?.nombre || "N/A"}</span>
+            </div>
+            <div>
+              <span className="block text-[10px] font-bold text-muted-foreground uppercase">Categoría</span>
+              <span className="block text-sm font-black text-foreground mt-0.5">{torneo.categoria}</span>
+            </div>
+            <div>
+              <span className="block text-[10px] font-bold text-muted-foreground uppercase">Tipo</span>
+              <span className="block text-sm font-black text-foreground mt-0.5 uppercase">
+                {torneo.datos_adicionales?.formato?.tipo_formato || "N/A"}
+              </span>
+            </div>
+            <div>
+              <span className="block text-[10px] font-bold text-muted-foreground uppercase">Cupo</span>
+              <span className="block text-sm font-black text-foreground mt-0.5">
+                {torneo.max_equipos || torneo.datos_adicionales?.formato?.num_equipos || "Sin Límite"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* BARRA DE ACCIONES PRINCIPALES (VERTICAL) */}
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => setModalInvitarOpen(true)}
+            className="w-full min-h-[52px] px-6 py-3 bg-primary hover:bg-primary-light text-primary-foreground font-black text-sm uppercase tracking-wider rounded-2xl transition-all shadow-md text-center flex items-center justify-center gap-2"
+          >
+            <span>🔗 Invitar por Enlace</span>
+          </button>
+
+          {isDuenoOAdmin && (
+            <button
+              type="button"
+              onClick={() => setModalSolicitudesOpen(true)}
+              className="w-full min-h-[52px] px-6 py-3 bg-secondary hover:bg-secondary/80 text-foreground border border-secondary font-black text-sm uppercase tracking-wider rounded-2xl transition-all shadow-sm text-center flex items-center justify-center gap-2 relative"
             >
-              <span>+ Inscribir Equipo</span>
-            </Link>
+              <span>Solicitudes</span>
+              {solicitudes.filter((s) => s.estado === "PENDIENTE").length > 0 && (
+                <span className="absolute top-1/2 -translate-y-1/2 right-4 px-2 py-0.5 bg-primary text-primary-foreground text-[10px] font-black rounded-full shadow-sm border border-primary/20">
+                  {solicitudes.filter((s) => s.estado === "PENDIENTE").length}
+                </span>
+              )}
+            </button>
           )}
 
           {isDuenoOAdmin && (
-            <>
-              <Link
-                href={`/partidos/nuevo?torneo_id=${torneo.id}`}
-                className="flex-1 sm:flex-none min-h-[44px] px-6 py-3 bg-secondary hover:bg-secondary/80 text-foreground border border-secondary font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-sm text-center flex items-center justify-center gap-2"
-              >
-                <span>Programar Partido</span>
-              </Link>
-
-              {equipos.length >= 2 && partidos.length === 0 && (
-                <button
-                  type="button"
-                  onClick={handleGenerarFixture}
-                  disabled={generandoFixture}
-                  className="flex-1 sm:flex-none min-h-[44px] px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-md text-center flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {generandoFixture ? (
-                    <span>Generando Fixture...</span>
-                  ) : (
-                    <span>Generar Fixture Automático</span>
-                  )}
-                </button>
-              )}
-            </>
+            <Link
+              href={`/partidos/nuevo?torneo_id=${torneo.id}`}
+              className="w-full min-h-[52px] px-6 py-3 bg-secondary hover:bg-secondary/80 text-foreground border border-secondary font-black text-sm uppercase tracking-wider rounded-2xl transition-all shadow-sm text-center flex items-center justify-center gap-2"
+            >
+              <span>Programar Partido</span>
+            </Link>
           )}
         </div>
 
-        {/* BANNER DESTACADO SI HAY EQUIPOS PERO NO HAY FIXTURE */}
-        {isDuenoOAdmin && equipos.length >= 2 && partidos.length === 0 && (
-          <div className="p-6 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/30 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/20 px-2.5 py-1 rounded-md border border-emerald-500/30">
-                Torneo listo para iniciar
-              </span>
-              <h4 className="text-lg font-black text-foreground mt-1">
-                Tienes {equipos.length} equipos inscritos
-              </h4>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Puedes generar el calendario oficial de enfrentamientos (Round-Robin todos contra todos) automáticamente.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleGenerarFixture}
-              disabled={generandoFixture}
-              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg transition-all flex-shrink-0"
-            >
-              {generandoFixture ? "Generando..." : "Generar Fixture Ahora"}
-            </button>
-          </div>
-        )}
+
 
         {/* DASHBOARD MODULAR INTERACTIVO (4 TARJETAS DE VISTA PREVIA CON DATOS REALES) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -496,59 +543,7 @@ export default function DetalleTorneoPage() {
             </div>
           </div>
 
-          {/* TARJETA 3: TABLA DE POSICIONES REAL */}
-          <div
-            onClick={() => setModalPosicionesOpen(true)}
-            className="bg-card rounded-3xl border border-secondary p-6 shadow-sm hover:border-primary/50 transition-all cursor-pointer group flex flex-col justify-between space-y-4 hover:shadow-xl"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20">
-                  Clasificación General
-                </span>
-                <h3 className="text-xl font-black text-foreground tracking-tight mt-2">
-                  Tabla de Posiciones
-                </h3>
-              </div>
-              <span className="text-xs font-extrabold text-muted-foreground bg-background px-3 py-1.5 rounded-2xl border border-secondary">
-                Fase Regular
-              </span>
-            </div>
 
-            <div className="space-y-2">
-              {tablaPosiciones.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Inscribe equipos para ver la tabla.</p>
-              ) : (
-                tablaPosiciones.slice(0, 2).map((tp) => (
-                  <div
-                    key={tp.pos}
-                    className="flex items-center justify-between text-xs font-bold bg-background p-2 rounded-xl border border-secondary/50"
-                  >
-                    <div className="flex items-center gap-2 truncate min-w-0">
-                      <span className="text-muted-foreground font-black flex-shrink-0">#{tp.pos}</span>
-                      <span
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: tp.color }}
-                      />
-                      <span className="truncate min-w-0">{tp.equipo}</span>
-                    </div>
-                    <span className="text-primary font-black px-2 py-0.5 rounded bg-primary/10 flex-shrink-0">
-                      {tp.pts} pts
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="pt-3 border-t border-secondary flex items-center justify-end">
-              <button
-                type="button"
-                className="min-h-[40px] px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer"
-              >
-                Ver Tabla →
-              </button>
-            </div>
-          </div>
 
           {/* TARJETA 4: LÍDERES DE GOLEO REAL (ESTADO LIMPIO) */}
           <div
@@ -601,6 +596,28 @@ export default function DetalleTorneoPage() {
           </div>
 
         </div>
+
+        {/* ESTRUCTURA DEL TORNEO (BRACKET / LIGA) */}
+        {torneo.datos_adicionales?.formato && (
+          <div className="bg-card rounded-3xl border border-secondary p-6 shadow-sm overflow-hidden">
+            <h3 className="text-xl font-black text-foreground tracking-tight mb-4 flex items-center gap-2">
+              Estructura del Torneo
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest bg-secondary/50 px-2.5 py-1 rounded-full border border-secondary">
+                Previsualización Oficial
+              </span>
+            </h3>
+            <BracketPreview
+              numEquipos={torneo.max_equipos || torneo.datos_adicionales.formato.num_equipos || equipos.length || 4}
+              tipoFormato={torneo.datos_adicionales.formato.tipo_formato}
+              terCerLugar={torneo.datos_adicionales.formato.tercer_lugar}
+              clasificados={torneo.datos_adicionales.formato.clasificados_playoffs}
+              numGrupos={torneo.datos_adicionales.formato.num_grupos}
+              equiposPorGrupo={torneo.datos_adicionales.formato.equipos_por_grupo}
+              clasificadosPorGrupo={torneo.datos_adicionales.formato.clasificados_por_grupo}
+              teamNames={equipos.map(e => e.nombre)}
+            />
+          </div>
+        )}
 
         {/* REGLAS DEL TORNEO */}
         <div className="bg-card rounded-3xl border border-secondary p-6 shadow-sm space-y-3">
@@ -776,14 +793,12 @@ export default function DetalleTorneoPage() {
                       Aún no hay partidos en este torneo.
                     </p>
                     {isDuenoOAdmin && equipos.length >= 2 && (
-                      <button
-                        type="button"
-                        onClick={handleGenerarFixture}
-                        disabled={generandoFixture}
-                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow transition-all"
+                      <Link
+                        href={`/partidos/nuevo?torneo_id=${torneo.id}`}
+                        className="inline-block px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow transition-all"
                       >
-                        {generandoFixture ? "Generando..." : "Generar Fixture Automático Ahora"}
-                      </button>
+                        Programar Partidos Ahora
+                      </Link>
                     )}
                   </div>
                 ) : (
@@ -1038,6 +1053,206 @@ export default function DetalleTorneoPage() {
                   className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-colors shadow disabled:opacity-50"
                 >
                   {deleting ? "Eliminando..." : "Sí, Eliminar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL INVITAR EQUIPOS / COMPARTIR ENLACE */}
+        {modalInvitarOpen && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-card rounded-3xl border border-secondary max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center pb-3 border-b border-secondary">
+                <div>
+                  <h3 className="text-xl font-black text-foreground tracking-tight">
+                    Invitar Equipos al Torneo
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Comparte este enlace público con capitanes y directores técnicos.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModalInvitarOpen(false)}
+                  className="text-muted-foreground hover:text-foreground text-xl font-bold p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-4 bg-background rounded-2xl border border-secondary space-y-2">
+                  <span className="block text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                    Enlace de Inscripción Pública
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={typeof window !== "undefined" ? `${window.location.origin}/torneos/${torneo.id}/unirse` : `/torneos/${torneo.id}/unirse`}
+                      className="w-full bg-secondary/50 border border-secondary rounded-xl px-3 py-2 text-xs font-mono text-foreground select-all focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopiarEnlace}
+                      className={`min-w-[100px] px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex-shrink-0 flex items-center justify-center gap-1.5 ${
+                        copiado
+                          ? "bg-emerald-600 text-white"
+                          : "bg-primary hover:bg-primary-light text-primary-foreground"
+                      }`}
+                    >
+                      {copiado ? (
+                        <>
+                          <svg className="w-4 h-4 text-white animate-in zoom-in spin-in-180 duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>¡Copiado!</span>
+                        </>
+                      ) : (
+                        <span>Copiar</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-background rounded-2xl border border-secondary">
+                    <span className="block text-[10px] uppercase font-bold text-muted-foreground">
+                      Cupo Máximo
+                    </span>
+                    <span className="text-sm font-black text-foreground mt-0.5 block">
+                      {equipos.length} / {torneo.max_equipos || "Ilimitado"}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-background rounded-2xl border border-secondary">
+                    <span className="block text-[10px] uppercase font-bold text-muted-foreground">
+                      Fecha Límite
+                    </span>
+                    <span className="text-sm font-black text-foreground mt-0.5 block">
+                      {torneo.fecha_cierre_inscripcion
+                        ? new Date(torneo.fecha_cierre_inscripcion).toLocaleDateString()
+                        : "Sin fecha de corte"}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-muted-foreground">
+                  Los capitanes podrán postular su equipo. Podrás revisar y aprobar cada solicitud desde el panel de solicitudes de este torneo.
+                </p>
+              </div>
+
+              <div className="pt-3 border-t border-secondary flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setModalInvitarOpen(false)}
+                  className="px-5 py-2.5 bg-secondary text-foreground rounded-xl font-bold text-xs hover:bg-secondary/80 transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL BANDEJA DE SOLICITUDES DE INSCRIPCIÓN */}
+        {modalSolicitudesOpen && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-card rounded-3xl border border-secondary max-w-xl w-full p-6 shadow-2xl space-y-5 max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center pb-3 border-b border-secondary">
+                <div>
+                  <h3 className="text-xl font-black text-foreground tracking-tight">
+                    Solicitudes de Inscripción
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Revisa y aprueba los equipos que han solicitado unirse a través del enlace de invitación.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModalSolicitudesOpen(false)}
+                  className="text-muted-foreground hover:text-foreground text-xl font-bold p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="overflow-y-auto flex-1 p-1 space-y-3">
+                {solicitudes.length === 0 ? (
+                  <div className="text-center py-10 space-y-2">
+                    <p className="font-bold text-sm text-foreground">
+                      No hay solicitudes registradas
+                    </p>
+                    <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                      Comparte el enlace del torneo para que los capitanes de equipo envíen sus solicitudes.
+                    </p>
+                  </div>
+                ) : (
+                  solicitudes.map((sol) => {
+                    const esPendiente = sol.estado === "PENDIENTE";
+                    const isProcessing = procesandoSolicitudId === sol.equipo_id;
+
+                    return (
+                      <div
+                        key={sol.id}
+                        className="p-4 bg-background rounded-2xl border border-secondary flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-sm text-foreground">
+                              {sol.equipo?.nombre || `Equipo ID: ${sol.equipo_id.slice(0, 8)}...`}
+                            </span>
+                            <span
+                              className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                sol.estado === "APROBADA"
+                                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                  : sol.estado === "RECHAZADA"
+                                  ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                  : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                              }`}
+                            >
+                              {sol.estado}
+                            </span>
+                          </div>
+                          <span className="block text-[11px] text-muted-foreground">
+                            Fecha de solicitud: {new Date(sol.fecha_solicitud).toLocaleString()}
+                          </span>
+                        </div>
+
+                        {esPendiente && (
+                          <div className="flex items-center gap-2 self-end sm:self-center">
+                            <button
+                              type="button"
+                              disabled={isProcessing}
+                              onClick={() => handleProcesarSolicitud(sol.equipo_id, "ACEPTAR")}
+                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow"
+                            >
+                              {isProcessing ? "..." : "Aprobar"}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isProcessing}
+                              onClick={() => handleProcesarSolicitud(sol.equipo_id, "RECHAZAR")}
+                              className="px-4 py-2 bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 text-destructive font-black text-xs uppercase tracking-wider rounded-xl transition-all"
+                            >
+                              {isProcessing ? "..." : "Rechazar"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-secondary flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setModalSolicitudesOpen(false)}
+                  className="px-5 py-2.5 bg-secondary text-foreground rounded-xl font-bold text-xs hover:bg-secondary/80 transition-colors"
+                >
+                  Cerrar
                 </button>
               </div>
             </div>

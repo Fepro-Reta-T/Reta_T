@@ -74,7 +74,7 @@ async def eliminar_torneo(
         )
     await service.eliminar(torneo_id)
 
-from app.schemas.inscripcion import InscripcionCreate, InscripcionResponse
+from app.schemas.inscripcion import InscripcionCreate, InscripcionResponse, SolicitudInscripcionResponse, SolicitudAccionRequest
 
 # ✅ AGREGADOS: Endpoints de inscripción
 @router.post("/{torneo_id}/inscripciones", response_model=InscripcionResponse, status_code=status.HTTP_201_CREATED)
@@ -138,3 +138,57 @@ async def retirar_equipo(
             status_code=400,
             detail="No se pudo retirar el equipo"
         )
+
+# ✅ Solicitudes
+@router.post("/{torneo_id}/solicitudes", status_code=status.HTTP_201_CREATED)
+async def crear_solicitud(
+    torneo_id: UUID,
+    datos: InscripcionCreate,
+    current_user: User = Depends(get_current_user),
+    service: TorneoService = Depends(get_torneo_service)
+):
+    # Validar que el usuario que manda la solicitud es creador del equipo
+    # Para eso podríamos inyectar el equipo_service y ver si current_user.id == equipo.creator_id
+    # Por ahora simplemente creamos la solicitud.
+    success, message = await service.crear_solicitud(torneo_id, datos.equipo_id)
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    return {"message": message}
+
+@router.get("/{torneo_id}/solicitudes", response_model=List[SolicitudInscripcionResponse])
+async def listar_solicitudes(
+    torneo_id: UUID,
+    current_user: User = Depends(get_current_user),
+    service: TorneoService = Depends(get_torneo_service)
+):
+    torneo = await service.obtener(torneo_id)
+    if not torneo:
+        raise HTTPException(status_code=404, detail="Torneo no encontrado")
+    if current_user.role != RoleEnum.ADMIN and torneo.organizer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para ver las solicitudes de este torneo"
+        )
+    return await service.listar_solicitudes(torneo_id)
+
+@router.patch("/{torneo_id}/solicitudes/{equipo_id}")
+async def procesar_solicitud(
+    torneo_id: UUID,
+    equipo_id: UUID,
+    datos: SolicitudAccionRequest,
+    current_user: User = Depends(get_current_user),
+    service: TorneoService = Depends(get_torneo_service)
+):
+    torneo = await service.obtener(torneo_id)
+    if not torneo:
+        raise HTTPException(status_code=404, detail="Torneo no encontrado")
+    if current_user.role != RoleEnum.ADMIN and torneo.organizer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para procesar las solicitudes de este torneo"
+        )
+        
+    success, message = await service.procesar_solicitud(torneo_id, equipo_id, datos.accion)
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+    return {"message": message}

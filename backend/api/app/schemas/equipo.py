@@ -27,3 +27,8 @@ class EquipoResponse(EquipoBase):
     datos_adicionales: Optional[dict] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+from pydantic import EmailStr
+
+class EquipoTransferirRequest(BaseModel):
+    email: EmailStr

@@ -6,6 +6,8 @@ export interface Torneo {
   categoria: string;
   sport_id: string;
   organizer_id: string;
+  max_equipos?: number;
+  fecha_cierre_inscripcion?: string;
   creado_en?: string;
   datos_adicionales?: Record<string, any>;
   // Relaciones
@@ -20,6 +22,8 @@ export interface TorneoCrearPayload {
   nombre: string;
   categoria: string;
   sport_id: string;
+  max_equipos?: number;
+  fecha_cierre_inscripcion?: string;
   datos_adicionales?: Record<string, any>;
 }
 
@@ -27,6 +31,8 @@ export interface TorneoActualizarPayload {
   nombre?: string;
   categoria?: string;
   sport_id?: string;
+  max_equipos?: number;
+  fecha_cierre_inscripcion?: string;
   datos_adicionales?: Record<string, any>;
 }
 
