@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
-from typing import List
+from typing import List, Optional
 from app.core.database import get_db
 from app.core.deps import get_current_user
 from app.models.user import User, RoleEnum
@@ -74,14 +74,21 @@ async def eliminar_torneo(
         )
     await service.eliminar(torneo_id)
 
+from app.schemas.inscripcion import InscripcionCreate, InscripcionResponse
+
 # ✅ AGREGADOS: Endpoints de inscripción
-@router.post("/{torneo_id}/inscripciones", status_code=status.HTTP_201_CREATED)
+@router.post("/{torneo_id}/inscripciones", response_model=InscripcionResponse, status_code=status.HTTP_201_CREATED)
 async def inscribir_equipo(
     torneo_id: UUID,
-    equipo_id: UUID,
+    datos: Optional[InscripcionCreate] = None,
+    equipo_id: Optional[UUID] = None,
     current_user: User = Depends(get_current_user),
     service: TorneoService = Depends(get_torneo_service)
 ):
+    target_equipo_id = datos.equipo_id if datos else equipo_id
+    if not target_equipo_id:
+        raise HTTPException(status_code=400, detail="Debe especificar equipo_id")
+
     torneo = await service.obtener(torneo_id)
     if not torneo:
         raise HTTPException(status_code=404, detail="Torneo no encontrado")
@@ -90,13 +97,17 @@ async def inscribir_equipo(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para inscribir equipos en este torneo"
         )
-    resultado = await service.inscribir_equipo(torneo_id, equipo_id)
+    resultado = await service.inscribir_equipo(torneo_id, target_equipo_id)
     if not resultado:
         raise HTTPException(
             status_code=400,
-            detail="No se pudo inscribir el equipo"
+            detail="No se pudo inscribir el equipo (posible duplicado, deporte no coincide o equipo no existe)"
         )
-    return {"message": "Equipo inscrito correctamente"}
+    return {
+        "message": "Equipo inscrito correctamente",
+        "torneo_id": torneo_id,
+        "equipo_id": target_equipo_id
+    }
 
 @router.get("/{torneo_id}/equipos", response_model=List[EquipoResponse])
 async def listar_equipos_inscritos(

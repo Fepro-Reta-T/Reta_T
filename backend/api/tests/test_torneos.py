@@ -103,7 +103,8 @@ def test_inscripciones_torneo_solo_por_organizador_creador(client):
     # Orga 1 crea equipo
     equipo = client.post("/equipos/", json={
         "nombre": "Equipo Inscribible",
-        "color": "#123456"
+        "color": "#123456",
+        "datos_adicionales": {"tipo_equipo": "femenil"}
     }, headers=orga1_headers).json()
     equipo_id = equipo["id"]
 

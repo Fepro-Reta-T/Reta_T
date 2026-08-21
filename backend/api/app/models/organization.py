@@ -22,9 +22,11 @@ class Equipo(Base):
     nombre = Column(String, nullable=False, index=True)
     color = Column(String, nullable=True)
     logo_url = Column(String, nullable=True)
+    sport_id = Column(UUID(as_uuid=True), ForeignKey("sports.id"), nullable=True)
     datos_adicionales = Column(JSON, nullable=True)
     creator_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
+    sport = relationship("Sport", backref="equipos")
     creator = relationship("User", backref="equipos_creados")
     torneos = relationship("Tournament", secondary=inscripcion_table, back_populates="equipos")
     participantes = relationship("Participante", back_populates="equipo", cascade="all, delete-orphan")

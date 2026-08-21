@@ -5,6 +5,7 @@ import {
   createEquiposApi,
   createCanchasApi,
   createInscripcionesApi,
+  createPartidosApi,
 } from '@reta-t/api-client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -16,6 +17,7 @@ export const torneosApi = createTorneosApi(apiClient);
 export const equiposApi = createEquiposApi(apiClient);
 export const canchasApi = createCanchasApi(apiClient);
 export const inscripcionesApi = createInscripcionesApi(apiClient);
+export const partidosApi = createPartidosApi(apiClient);
 
 const TOKEN_KEY = 'auth_token';
 export const setAuthToken = (token: string | null) => {

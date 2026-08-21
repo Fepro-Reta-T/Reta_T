@@ -12,10 +12,10 @@ interface SportOption {
 }
 
 const visualSports: SportOption[] = [
-  { id: "futbol", name: "Fútbol", icon: "⚽", image: "/Futbol.jpg" },
-  { id: "futbol7", name: "Fútbol 7", icon: "🏟️", image: "/Futbol 7.jpg" },
-  { id: "basketball", name: "Basketball", icon: "🏀", image: "/Basket.jpg" },
-  { id: "volleyball", name: "Voleibol", icon: "🏐", image: "/Volley.jpg" },
+  { id: "futbol", name: "Fútbol", icon: "", image: "/Futbol.jpg" },
+  { id: "futbol7", name: "Fútbol 7", icon: "", image: "/Futbol 7.jpg" },
+  { id: "basketball", name: "Basketball", icon: "", image: "/Basket.jpg" },
+  { id: "volleyball", name: "Voleibol", icon: "", image: "/Volley.jpg" },
 ];
 
 const visualTeams = [

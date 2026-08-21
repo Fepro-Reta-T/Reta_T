@@ -30,6 +30,18 @@ class InscripcionRepository:
         if not equipo:
             return False
         
+        # Verificar que el deporte coincida (si ambos lo tienen definido)
+        equipo_sport = equipo.sport_id or (equipo.datos_adicionales or {}).get("sport_id")
+        if equipo_sport and torneo.sport_id:
+            if str(equipo_sport) != str(torneo.sport_id):
+                return False
+
+        # Verificar que la rama (categoría) coincida (Varonil, Femenil, Mixto)
+        if torneo.categoria:
+            equipo_categoria = (equipo.datos_adicionales or {}).get("tipo_equipo") or (equipo.datos_adicionales or {}).get("categoria")
+            if not equipo_categoria or str(equipo_categoria).lower() != str(torneo.categoria).lower():
+                return False
+
         # Verificar que no esté ya inscrito
         if equipo in torneo.equipos:
             return False
