@@ -46,16 +46,12 @@ Este es el diferenciador técnico del proyecto. Es obligatorio respetarlo:
 - Cualquier campo que se consulte frecuentemente para estadísticas (goleadores, tarjetas, MVP) debe evaluarse
   para indexación (índice GIN sobre JSONB o columna generada), no asumir que JSONB es gratis en performance.
 
-### Entidades nuevas del MVP (`MVP_RetaT.pdf`) — todavía no implementadas
+### Entidades nuevas del MVP (`MVP_RetaT.pdf`) — Estado de implementación
 
-- **`Municipio`**: agrupa canchas y torneos de una zona. Un `ADMIN` lo gestiona; un `VIEWER` se asigna a uno.
-- **`Cancha`**: nombre, dirección, coordenadas (lat/lng), capacidad estimada. Pertenece a un `Municipio`.
-  Es la entidad que probablemente termine alimentando cualquier búsqueda "cerca tuyo" a futuro (ver §10,
-  sección "Pendiente de definir") — pero por ahora sus coordenadas son solo para analítica de uso.
-- **`Participante`**: el "jugador opcional" (ver §4). Nombre, teléfono/email opcional, `user_id` nullable.
-- **Categorías de torneo**: `femenil`, `varonil`, `mixto` — campo en `Torneo`, alimenta el reporte de
-  "participación por género".
-- **Asignación Encargado↔Partido**: relación que dice qué `MATCH_MANAGER` está a cargo de qué partido.
+- **`Municipio` y `Cancha`**: **Implementadas** (Modelos en `geo.py` y Endpoints CRUD funcionales). `Municipio` agrupa canchas y torneos de una zona. `Cancha` contiene coordenadas para futura búsqueda geográfica.
+- **Categorías de torneo**: **Implementadas** (Campo `categoria` en el modelo `Tournament`).
+- **`Participante`**: **Modelado** (Modelo en `game.py`). Falta desarrollar sus endpoints y el flujo para "reclamar perfil".
+- **`Partido` y Asignación Encargado**: **Modelado** (Modelo en `game.py` con `match_manager_id`). Falta desarrollar sus endpoints para interactuar con la PWA.
 
 ## 4. Autenticación y autorización
 
@@ -73,16 +69,12 @@ Este es el diferenciador técnico del proyecto. Es obligatorio respetarlo:
 | Rol | Quién lo obtiene | Permisos |
 |---|---|---|
 | `ADMIN` | Asignado manualmente (no autoregistrable) | Ve todas las ligas/torneos/usuarios, gestiona municipios, analítica completa |
-| `ORGANIZER` | **Autoregistro directo** — cualquiera puede elegir este rol al crear su cuenta, sin aprobación de un Admin | CRUD de torneos, canchas y partidos. Ve su propia analítica. Puede invitar a otros organizadores |
-| `MATCH_MANAGER` (Encargado de partido) | Asignado por un `ORGANIZER` a un partido puntual (no se autoregistra con este rol) | Solo registra goles y asistencia del partido que tiene asignado. No crea torneos ni canchas |
-| `PLAYER` | Autoregistro directo, o creado automáticamente al "reclamar" un historial de partido (ver abajo) | Ve sus propias estadísticas e historial. Sin permisos de creación/edición |
+| `ORGANIZER` | **Por Invitación / Asignación** — Un `ORGANIZER` existente o un `ADMIN` le otorga este rol (mediante link de invitación o panel). | CRUD de torneos, canchas y partidos. Ve su propia analítica. Puede invitar a otros organizadores |
+| `MATCH_MANAGER` (Encargado de partido) | Asignado por un `ORGANIZER` a un partido puntual (mediante link o panel). | Solo registra goles y asistencia del partido que tiene asignado. No crea torneos ni canchas |
+| `PLAYER` | **Rol por defecto** al crear una cuenta, o asignado al "reclamar" un historial de partido (ver abajo). | Ve sus propias estadísticas e historial. Sin permisos de creación/edición |
 | `VIEWER` (Visualizador — municipio) | Asignado manualmente por un `ADMIN` (representa a un municipio) | Solo lectura del dashboard de uso de espacios públicos (canchas de ese municipio) |
 
-**Por qué "autoregistro directo" y no ownership libre (decisión anterior, descartada):** un chequeo de rol
-estático (`require_role(...)`) es más simple y predecible que resolver permisos por "quién es el dueño de
-qué" — y es lo que pide el PDF del MVP. Lo que se mantiene de la idea original es que **no hace falta que
-un Admin apruebe a nadie** para que alguien empiece a organizar torneos: el rol `ORGANIZER` se elige en el
-registro, no se otorga después.
+**Simplificación de Roles (Decisión actual):** Se descartó la idea de que los usuarios elijan su rol libremente al registrarse por temas de seguridad y control. Todo usuario nuevo nace como `PLAYER`. Para convertirse en `ORGANIZER` o `MATCH_MANAGER`, debe recibir una invitación (link mágico) de alguien que ya tenga esos permisos o ser asignado manualmente. Esto mantiene la seguridad usando un chequeo estático simple (`require_role(...)`) en lugar de lógicas complejas de ownership, asegurando que solo personal autorizado cree torneos.
 
 ### El "jugador opcional" — asistencia sin cuenta, con opción de reclamarla
 
@@ -154,6 +146,10 @@ Todo endpoint de estadísticas requiere login (`Depends(get_current_user)`), sin
 - El proyecto sigue un roadmap por fases (Fundación → Ligas → Equipos → Jugadores → Torneos → Registro PWA →
   Motor de eventos → Estadísticas → Comunidad → Dashboard → Inteligencia → Notificaciones → Patrocinios → IA →
   Escalabilidad).
+- **Prioridad Actual (Fase Activa):** 
+  1. Inscripción de equipos a ligas/torneos. 
+  2. Programación de Partidos (Fixture y asignación de encargados). 
+  3. Desarrollo del Panel de Arbitraje (PWA).
 - No implementar infraestructura o funcionalidades de fases futuras (Redis, Celery, IA, patrocinios) si la
   tarea actual corresponde a una fase anterior, salvo que el usuario lo pida explícitamente.
 - El MVP es (actualizado con `MVP_RetaT.pdf`): autenticación (con recuperar contraseña), gestión de

@@ -213,14 +213,15 @@ export default function GestionEquipoCoachPage() {
   const posicionesDisponibles = getPosicionesPorDeporte(sportNombre);
   const totalGoles = jugadores.reduce((acc, j) => acc + (j.goles || 0), 0);
 
-  const isCoach = currentUser?.role === "organizer" || currentUser?.role === "admin" || currentUser?.role === "coach";
+  const isCoach = !isInvitado && Boolean(currentUser);
   const isCreador = Boolean(
     currentUser?.id &&
-      (equipo.datos_adicionales?.creador_id === currentUser.id ||
+      ((equipo as any).creator_id === currentUser.id ||
+        equipo.datos_adicionales?.creador_id === currentUser.id ||
         equipo.datos_adicionales?.organizer_id === currentUser.id ||
         (equipo as any).organizer_id === currentUser.id)
   );
-  const puedeEliminar = !isInvitado && Boolean(currentUser) && (isCoach || isCreador);
+  const puedeEliminar = !isInvitado && Boolean(currentUser) && (currentUser?.role === "admin" || isCreador || isCoach);
 
   return (
     <AppLayout>

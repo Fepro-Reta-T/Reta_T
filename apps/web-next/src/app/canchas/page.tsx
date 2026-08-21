@@ -14,13 +14,11 @@ export default function CanchasPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setIsInvitado(localStorage.getItem('invitado') === 'true');
+      const invitado = localStorage.getItem('invitado') === 'true';
+      setIsInvitado(invitado);
       const userStr = localStorage.getItem('user');
-      if (userStr) {
-        try {
-          const u = JSON.parse(userStr);
-          setIsOrganizer(u.role === 'organizer' || u.role === 'admin');
-        } catch {}
+      if (userStr && !invitado) {
+        setIsOrganizer(true);
       }
     }
     cargarCanchas();

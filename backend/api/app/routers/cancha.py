@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import List
 from app.core.database import get_db
-from app.core.deps import require_role
+from app.core.deps import get_current_user
 from app.models.user import User, RoleEnum
 from app.schemas.cancha import CanchaCreate, CanchaUpdate, CanchaResponse
 from app.services.cancha_service import CanchaService
@@ -18,9 +18,7 @@ def get_cancha_service(db: AsyncSession = Depends(get_db)) -> CanchaService:
 @router.post("/", response_model=CanchaResponse, status_code=status.HTTP_201_CREATED)
 async def crear_cancha(
     datos: CanchaCreate,
-    current_user: User = Depends(
-        require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER) 
-    ),
+    current_user: User = Depends(get_current_user),
     service: CanchaService = Depends(get_cancha_service)
 ):
     return await service.crear_cancha(datos, current_user.id)
@@ -45,20 +43,31 @@ async def obtener_cancha(
 async def actualizar_cancha(
     cancha_id: UUID,
     datos: CanchaUpdate,
-    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
+    current_user: User = Depends(get_current_user),
     service: CanchaService = Depends(get_cancha_service)
 ):
-    cancha = await service.actualizar_cancha(cancha_id, datos)
+    cancha = await service.obtener_cancha(cancha_id)
     if not cancha:
         raise HTTPException(status_code=404, detail="Cancha no encontrada")
-    return cancha
+    if current_user.role != RoleEnum.ADMIN and cancha.propietario_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para modificar esta cancha"
+        )
+    return await service.actualizar_cancha(cancha_id, datos)
 
 @router.delete("/{cancha_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def eliminar_cancha(
     cancha_id: UUID,
-    current_user: User = Depends(require_role(RoleEnum.ADMIN, RoleEnum.ORGANIZER)),
+    current_user: User = Depends(get_current_user),
     service: CanchaService = Depends(get_cancha_service)
 ):
-    eliminado = await service.eliminar_cancha(cancha_id)
-    if not eliminado:
+    cancha = await service.obtener_cancha(cancha_id)
+    if not cancha:
         raise HTTPException(status_code=404, detail="Cancha no encontrada")
+    if current_user.role != RoleEnum.ADMIN and cancha.propietario_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permiso para eliminar esta cancha"
+        )
+    await service.eliminar_cancha(cancha_id)

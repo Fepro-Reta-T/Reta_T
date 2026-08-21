@@ -88,18 +88,19 @@ export default function DetalleTorneoPage() {
     return false;
   });
 
-  const [isOrganizer] = useState(() => {
+  const [currentUser] = useState<{ id?: string; role?: string } | null>(() => {
     if (typeof window !== "undefined") {
       const userStr = localStorage.getItem("user");
       if (userStr) {
         try {
-          const u = JSON.parse(userStr);
-          return u.role === "organizer" || u.role === "admin";
+          return JSON.parse(userStr);
         } catch {}
       }
     }
-    return false;
+    return null;
   });
+
+  const isDuenoOAdmin = !isInvitado && Boolean(currentUser) && (currentUser?.role === "admin" || (Boolean(torneo?.organizer_id) && torneo?.organizer_id === currentUser?.id));
 
   useEffect(() => {
     async function cargarDatos() {
@@ -235,7 +236,7 @@ export default function DetalleTorneoPage() {
             </Link>
           )}
 
-          {isOrganizer && !isInvitado && (
+          {isDuenoOAdmin && (
             <Link
               href={`/partidos/nuevo?torneo_id=${torneo.id}`}
               className="flex-1 sm:flex-none min-h-[44px] px-6 py-3 bg-secondary hover:bg-secondary/80 text-foreground border border-secondary font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-sm text-center flex items-center justify-center gap-2"
@@ -510,7 +511,7 @@ export default function DetalleTorneoPage() {
         </div>
 
         {/* ZONA DE PELIGRO Y ELIMINACIÓN DE TORNEO (HASTA ABAJO DE TODO) */}
-        {isOrganizer && !isInvitado && (
+        {isDuenoOAdmin && (
           <div className="p-6 rounded-3xl border border-red-500/30 bg-red-500/5 shadow-sm space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>

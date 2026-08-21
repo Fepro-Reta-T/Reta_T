@@ -130,14 +130,15 @@ export default function EquiposPage() {
               const clubColor = equipo.color || "#991b1b";
               const badgeClass = getCategoryBadgeClass(tipoEquipo);
 
-              const isCoach = currentUser?.role === "organizer" || currentUser?.role === "admin" || currentUser?.role === "coach";
+              const isCoach = !isInvitado && Boolean(currentUser);
               const isCreador = Boolean(
                 currentUser?.id &&
-                  (equipo.datos_adicionales?.creador_id === currentUser.id ||
+                  ((equipo as any).creator_id === currentUser.id ||
+                    equipo.datos_adicionales?.creador_id === currentUser.id ||
                     equipo.datos_adicionales?.organizer_id === currentUser.id ||
                     (equipo as any).organizer_id === currentUser.id)
               );
-              const puedeEliminar = !isInvitado && Boolean(currentUser) && (isCoach || isCreador);
+              const puedeEliminar = !isInvitado && Boolean(currentUser) && (currentUser?.role === "admin" || isCreador || isCoach);
 
               return (
                 <div
