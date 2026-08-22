@@ -17,14 +17,14 @@ Con base en la visión operativa del proyecto, el siguiente sprint técnico se e
 **Misión:** Profesionalizar la logística geográfica de los torneos.
 * **Integración Frontend (Next.js):** Incorporar un mapa interactivo (Google Maps API) en el formulario de registro de canchas para que el organizador coloque un pin exacto.
 * **Resolución Geográfica:** Capturar la latitud/longitud y traducirla al municipio correspondiente.
-* **🚨 Criterio Arquitectónico (AGENTS.md):** La consulta a la API externa (geocodificación) debe resolverse **100% asíncronamente en el frontend (Next.js)**. FastAPI solo debe recibir los datos limpios (coordenadas listas) para guardarlos, evitando bloquear los hilos del servidor de Python esperando a Google.
+* **Criterio Arquitectónico (AGENTS.md):** La consulta a la API externa (geocodificación) debe resolverse **100% asíncronamente en el frontend (Next.js)**. FastAPI solo debe recibir los datos limpios (coordenadas listas) para guardarlos, evitando bloquear los hilos del servidor de Python esperando a Google.
 
 ### Desarrollador 3: Gestión Avanzada de Equipos y Roster
 **Misión:** Dar autonomía a los equipos y optimizar el rendimiento de la base de datos.
 * **Administración de Plantilla:** Interfaz en Next.js para editar el perfil del equipo, así como dar de alta (registrar) o de baja (quitar) jugadores del roster oficial.
 * **Analítica de Equipo:** Panel de estadísticas agregadas por equipo.
 * **Historial Optimizado:** Implementar un carrusel o lista de resultados que muestre **estrictamente los últimos 15 partidos jugados**. 
-* **🚨 Criterio Arquitectónico:** Las consultas a PostgreSQL (`torneo_repository.py`) deben incluir obligatoriamente la cláusula `.limit(15)` en el historial para evitar una sobrecarga de memoria cuando el torneo esté muy avanzado.
+* **Criterio Arquitectónico:** Las consultas a PostgreSQL (`torneo_repository.py`) deben incluir obligatoriamente la cláusula `.limit(15)` en el historial para evitar una sobrecarga de memoria cuando el torneo esté muy avanzado.
 
 ---
 
