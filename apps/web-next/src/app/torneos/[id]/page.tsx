@@ -3,64 +3,38 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { torneosApi, inscripcionesApi } from "@/lib/api";
-import type { Torneo, Equipo } from "@reta-t/types";
+import { torneosApi, inscripcionesApi, partidosApi } from "@/lib/api";
+import type { Torneo, Equipo, Partido } from "@reta-t/types";
 import AppLayout from "@/components/AppLayout";
-
-// Estructuras borrador para los enfrentamientos con degradado de color oficial por equipo
-const MOCK_PARTIDOS = [
-  {
-    id: "m1",
-    jornada: "Jornada 1",
-    fecha: "Sábado 22 de Agosto",
-    hora: "18:00 hrs",
-    cancha: "Cancha Central 1",
-    local: "Toros FC",
-    localColor: "#991b1b",
-    localLogo: null,
-    visitante: "Rayos de Puebla",
-    visitanteColor: "#1e3a8a",
-    visitanteLogo: null,
-    estado: "Finalizado",
-    marcadorLocal: 3,
-    marcadorVisitante: 1,
-  },
-  {
-    id: "m2",
-    jornada: "Jornada 1",
-    fecha: "Sábado 22 de Agosto",
-    hora: "19:30 hrs",
-    cancha: "Cancha Central 2",
-    local: "Jaguares FC",
-    localColor: "#d97706",
-    localLogo: null,
-    visitante: "Atlético San Pancho",
-    visitanteColor: "#065f46",
-    visitanteLogo: null,
-    estado: "Programado",
-    marcadorLocal: null,
-    marcadorVisitante: null,
-  },
-];
-
-const MOCK_TABLA_GOLEO = [
-  { pos: 1, jugador: "Carlos Silva", equipo: "Toros FC", goles: 8 },
-  { pos: 2, jugador: "Iker Ramírez", equipo: "Rayos de Puebla", goles: 6 },
-  { pos: 3, jugador: "Mateo Hernández", equipo: "Jaguares FC", goles: 5 },
-];
+import { BracketPreview } from "@/components/BracketPreview";
+import { BracketModal } from "./_components/BracketModal";
 
 function getCategoryBadgeClass(categoria: string) {
   const cat = (categoria || "").toLowerCase();
-  if (cat.includes("varonil")) {
-    return "bg-blue-500/15 text-blue-400 border-blue-500/30";
-  }
-  if (cat.includes("femenil")) {
-    return "bg-pink-500/15 text-pink-400 border-pink-500/30";
-  }
-  if (cat.includes("mixto")) {
-    return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
-  }
-  return "bg-amber-500/15 text-amber-400 border-amber-500/30";
+  if (cat.includes("varonil")) return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+  if (cat.includes("femenil")) return "bg-pink-500/10 text-pink-500 border-pink-500/20";
+  if (cat.includes("mixto")) return "bg-purple-500/10 text-purple-500 border-purple-500/20";
+  return "bg-secondary text-muted-foreground border-secondary";
+}
+
+function formatCategoria(categoria: string | undefined | null) {
+  if (!categoria) return "N/A";
+  const c = categoria.toLowerCase();
+  if (c === "varonil") return "Varonil";
+  if (c === "femenil") return "Femenil";
+  if (c === "mixto") return "Mixto";
+  return categoria.charAt(0).toUpperCase() + categoria.slice(1).toLowerCase();
+}
+
+function formatTipoFormato(tipo: string | undefined | null) {
+  if (!tipo) return "N/A";
+  const map: Record<string, string> = {
+    "liga": "Liga Regular",
+    "liga_playoffs": "Liga + Liguilla",
+    "grupos_playoffs": "Grupos + Liguilla",
+    "eliminatoria": "Eliminatoria Directa"
+  };
+  return map[tipo.toLowerCase()] || tipo.replace(/_/g, " ").toUpperCase();
 }
 
 export default function DetalleTorneoPage() {
@@ -70,7 +44,9 @@ export default function DetalleTorneoPage() {
 
   const [torneo, setTorneo] = useState<Torneo | null>(null);
   const [equipos, setEquipos] = useState<Equipo[]>([]);
+  const [partidos, setPartidos] = useState<Partido[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [error, setError] = useState<string | null>(null);
 
   // Modales de Expansión Completa
@@ -79,7 +55,16 @@ export default function DetalleTorneoPage() {
   const [modalPosicionesOpen, setModalPosicionesOpen] = useState(false);
   const [modalGoleoOpen, setModalGoleoOpen] = useState(false);
   const [modalEliminarOpen, setModalEliminarOpen] = useState(false);
+  const [modalBracketOpen, setModalBracketOpen] = useState(false);
+  const [modalInvitarOpen, setModalInvitarOpen] = useState(false);
+  const [modalSolicitudesOpen, setModalSolicitudesOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [copiado, setCopiado] = useState(false);
+
+  // Solicitudes de inscripción
+  const [solicitudes, setSolicitudes] = useState<any[]>([]);
+  const [loadingSolicitudes, setLoadingSolicitudes] = useState(false);
+  const [procesandoSolicitudId, setProcesandoSolicitudId] = useState<string | null>(null);
 
   const [isInvitado] = useState(() => {
     if (typeof window !== "undefined") {
@@ -100,17 +85,45 @@ export default function DetalleTorneoPage() {
     return null;
   });
 
-  const isDuenoOAdmin = !isInvitado && Boolean(currentUser) && (currentUser?.role === "admin" || (Boolean(torneo?.organizer_id) && torneo?.organizer_id === currentUser?.id));
+  const isDuenoOAdmin =
+    !isInvitado &&
+    Boolean(currentUser) &&
+    (currentUser?.role === "admin" ||
+      currentUser?.role === "organizer" ||
+      (Boolean(torneo?.organizer_id) && torneo?.organizer_id === currentUser?.id));
 
   useEffect(() => {
     async function cargarDatos() {
       try {
         const torneoData = await torneosApi.obtener(torneoId);
         const equiposInscritos = await inscripcionesApi.listarEquiposInscritos(torneoId);
+        let partidosTorneo: Partido[] = [];
+        try {
+          partidosTorneo = await partidosApi.listarPorTorneo(torneoId);
+        } catch {
+          partidosTorneo = [];
+        }
 
         setTorneo(torneoData);
         setEquipos(equiposInscritos);
+        setPartidos(partidosTorneo);
         setError(null);
+
+        // Cargar solicitudes si es organizador/admin
+        if (
+          !isInvitado &&
+          currentUser &&
+          (currentUser.role === "admin" ||
+            currentUser.role === "organizer" ||
+            torneoData.organizer_id === currentUser.id)
+        ) {
+          try {
+            const sols = await inscripcionesApi.listarSolicitudes(torneoId);
+            setSolicitudes(sols);
+          } catch {
+            setSolicitudes([]);
+          }
+        }
       } catch (err) {
         setError("Error al cargar los datos del torneo");
         console.error(err);
@@ -122,7 +135,67 @@ export default function DetalleTorneoPage() {
     if (torneoId) {
       cargarDatos();
     }
-  }, [torneoId]);
+  }, [torneoId, isInvitado, currentUser]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get("created") === "true") {
+        setModalInvitarOpen(true);
+        // Limpiamos el query param sin recargar
+        router.replace(`/torneos/${torneoId}`);
+      }
+    }
+  }, [torneoId, router]);
+
+  async function handleCopiarEnlace() {
+    if (typeof window !== "undefined") {
+      const url = `${window.location.origin}/torneos/${torneoId}/unirse`;
+      await navigator.clipboard.writeText(url);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2500);
+    }
+  }
+
+  const [retirandoEquipoId, setRetirandoEquipoId] = useState<string | null>(null);
+
+  async function handleProcesarSolicitud(equipoId: string, accion: "ACEPTAR" | "RECHAZAR") {
+    try {
+      setProcesandoSolicitudId(equipoId);
+      await inscripcionesApi.procesarSolicitud(torneoId, equipoId, accion);
+      const nuevasSolicitudes = await inscripcionesApi.listarSolicitudes(torneoId);
+      setSolicitudes(nuevasSolicitudes);
+      const equiposActualizados = await inscripcionesApi.listarEquiposInscritos(torneoId);
+      setEquipos(equiposActualizados);
+    } catch (err: any) {
+      alert(err.detail || err.message || "Error al procesar la solicitud");
+      console.error(err);
+    } finally {
+      setProcesandoSolicitudId(null);
+    }
+  }
+
+  async function handleRetirarEquipo(equipoId: string, equipoNombre: string) {
+    if (partidos.length > 0) {
+      alert("Una vez generado el fixture o iniciado el torneo no se pueden eliminar ni retirar equipos.");
+      return;
+    }
+    if (!confirm(`¿Estás seguro de que deseas eliminar al equipo "${equipoNombre}" de este torneo?`)) {
+      return;
+    }
+    try {
+      setRetirandoEquipoId(equipoId);
+      await inscripcionesApi.retirar(torneoId, equipoId);
+      const equiposActualizados = await inscripcionesApi.listarEquiposInscritos(torneoId);
+      setEquipos(equiposActualizados);
+    } catch (err: any) {
+      alert(err.message || "Error al retirar el equipo");
+      console.error(err);
+    } finally {
+      setRetirandoEquipoId(null);
+    }
+  }
+
 
   async function handleConfirmEliminar() {
     setDeleting(true);
@@ -169,21 +242,91 @@ export default function DetalleTorneoPage() {
   const reglas = torneo.datos_adicionales?.reglas;
   const badgeClass = getCategoryBadgeClass(torneo.categoria);
 
-  // Cálculo estético de tabla de posiciones basado en los equipos inscritos
-  const tablaPosiciones = equipos.map((eq, idx) => ({
-    pos: idx + 1,
-    equipo: eq.nombre,
-    color: eq.color || "#991b1b",
-    logo_url: eq.logo_url,
-    pj: 3,
-    pg: 2 - (idx % 2),
-    pe: idx % 2,
-    pp: 0,
-    gf: 7 - idx,
-    gc: 3 + idx,
-    dg: 4 - idx * 2,
-    pts: (2 - (idx % 2)) * 3 + (idx % 2),
-  }));
+  // Mapa rápido de equipos por ID
+  const equipoMap = new Map<string, Equipo>();
+  equipos.forEach((e) => equipoMap.set(e.id, e));
+
+  // Cálculo REAL de tabla de posiciones basado en los partidos jugados
+  const statsMap = new Map<
+    string,
+    { equipo: string; color: string; logo_url?: string | null; pj: number; pg: number; pe: number; pp: number; gf: number; gc: number; dg: number; pts: number }
+  >();
+
+  equipos.forEach((eq) => {
+    statsMap.set(eq.id, {
+      equipo: eq.nombre,
+      color: eq.color || "#991b1b",
+      logo_url: eq.logo_url,
+      pj: 0,
+      pg: 0,
+      pe: 0,
+      pp: 0,
+      gf: 0,
+      gc: 0,
+      dg: 0,
+      pts: 0,
+    });
+  });
+
+  partidos.forEach((p) => {
+    const estado = p.datos_adicionales?.estado;
+    const ml = p.datos_adicionales?.marcador_local;
+    const mv = p.datos_adicionales?.marcador_visitante;
+
+    if (estado?.toUpperCase() === "FINALIZADO" && typeof ml === "number" && typeof mv === "number") {
+      const el = statsMap.get(p.equipo_local_id);
+      const ev = statsMap.get(p.equipo_visitante_id);
+
+      if (el && ev) {
+        el.pj += 1;
+        ev.pj += 1;
+        el.gf += ml;
+        el.gc += mv;
+        ev.gf += mv;
+        ev.gc += ml;
+        el.dg = el.gf - el.gc;
+        ev.dg = ev.gf - ev.gc;
+
+        if (ml > mv) {
+          el.pg += 1;
+          el.pts += 3;
+          ev.pp += 1;
+        } else if (mv > ml) {
+          ev.pg += 1;
+          ev.pts += 3;
+          el.pp += 1;
+        } else {
+          el.pe += 1;
+          el.pts += 1;
+          ev.pe += 1;
+          ev.pts += 1;
+        }
+      }
+    }
+  });
+
+  const tablaPosiciones = Array.from(statsMap.values()).sort((a, b) => {
+    if (b.pts !== a.pts) return b.pts - a.pts;
+    if (b.dg !== a.dg) return b.dg - a.dg;
+    if (b.gf !== a.gf) return b.gf - a.gf;
+    return a.equipo.localeCompare(b.equipo);
+  }).map((row, idx) => ({ pos: idx + 1, ...row }));
+
+  // Agrupación de partidos reales por jornada para el Bracket/Rol de Juegos
+  const jornadasMap = new Map<string | number, Partido[]>();
+  partidos.forEach((p) => {
+    const j = p.datos_adicionales?.jornada || p.datos_adicionales?.fase || 1;
+    if (!jornadasMap.has(j)) jornadasMap.set(j, []);
+    jornadasMap.get(j)!.push(p);
+  });
+  const jornadasOrdenadas = Array.from(jornadasMap.entries()).sort(([a], [b]) => {
+    if (typeof a === 'number' && typeof b === 'number') return a - b;
+    if (typeof a === 'number') return -1;
+    if (typeof b === 'number') return 1;
+    if (a === "Semis" && b === "Final") return -1;
+    if (a === "Final" && b === "Semis") return 1;
+    return String(a).localeCompare(String(b));
+  });
 
   return (
     <AppLayout>
@@ -197,59 +340,92 @@ export default function DetalleTorneoPage() {
           ← Volver a Catálogo de Torneos
         </Link>
 
-        {/* HERO BANNER DE PORTADA DEL TORNEO CON DEGRADADO SUAVE */}
+        {/* HERO BANNER DE PORTADA DEL TORNEO */}
         <div className="relative w-full h-60 sm:h-72 rounded-3xl overflow-hidden border border-secondary shadow-xl group bg-card">
           <img
             src={portada}
             alt={torneo.nombre}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
-          {/* Degradado progresivo hacia el fondo semántico */}
           <div className="absolute inset-0 bg-gradient-to-t from-card via-card/75 via-45% to-black/30" />
 
           <div className="absolute inset-0 p-6 sm:p-8 flex flex-col justify-end z-10 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`text-xs uppercase tracking-widest font-extrabold backdrop-blur-md px-3 py-1 rounded-full border capitalize shadow-sm ${badgeClass}`}>
-                Categoría: {torneo.categoria}
-              </span>
-              {torneo.sport && (
-                <span className="text-xs uppercase tracking-widest font-extrabold text-foreground bg-card/80 backdrop-blur-md px-3 py-1 rounded-full border border-secondary shadow-sm">
-                  {torneo.sport.nombre}
-                </span>
-              )}
-            </div>
-
             <h1 className="text-2xl sm:text-4xl font-black text-foreground tracking-tight leading-tight drop-shadow-sm">
               {torneo.nombre}
             </h1>
           </div>
         </div>
 
-        {/* BARRA DE ACCIONES PRINCIPALES (UBICADA DEBAJO DEL BANNER) */}
-        <div className="flex flex-wrap items-center gap-3 bg-card p-4 rounded-3xl border border-secondary shadow-sm">
-          {!isInvitado && (
-            <Link
-              href={`/torneos/${torneo.id}/inscribir`}
-              className="flex-1 sm:flex-none min-h-[44px] px-6 py-3 bg-primary hover:bg-primary-light text-primary-foreground font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-md text-center flex items-center justify-center gap-2"
+        {/* DETALLES GENERALES */}
+        <div className="bg-card rounded-3xl border border-secondary p-5 shadow-sm space-y-3">
+          <h3 className="text-sm font-black uppercase tracking-wider text-muted-foreground border-b border-secondary pb-2">
+            Detalles Generales del Torneo
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <span className="block text-[10px] font-bold text-muted-foreground uppercase">Deporte</span>
+              <span className="block text-sm font-black text-foreground mt-0.5">{torneo.sport?.nombre || "Fútbol"}</span>
+            </div>
+            <div>
+              <span className="block text-[10px] font-bold text-muted-foreground uppercase">Categoría</span>
+              <span className="block text-sm font-black text-foreground mt-0.5">{formatCategoria(torneo.categoria)}</span>
+            </div>
+            <div>
+              <span className="block text-[10px] font-bold text-muted-foreground uppercase">Tipo</span>
+              <span className="block text-sm font-black text-foreground mt-0.5">
+                {formatTipoFormato(torneo.datos_adicionales?.formato?.tipo_formato)}
+              </span>
+            </div>
+            <div>
+              <span className="block text-[10px] font-bold text-muted-foreground uppercase">Cupo</span>
+              <span className="block text-sm font-black text-foreground mt-0.5">
+                {torneo.max_equipos || torneo.datos_adicionales?.formato?.num_equipos || "Sin Límite"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* BARRA DE ACCIONES PRINCIPALES (VERTICAL) */}
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => setModalInvitarOpen(true)}
+            className="w-full min-h-[52px] px-6 py-3 bg-primary hover:bg-primary-light text-primary-foreground font-black text-sm uppercase tracking-wider rounded-2xl transition-all shadow-md text-center flex items-center justify-center gap-2"
+          >
+            <span>Invitar por Enlace</span>
+          </button>
+
+          {isDuenoOAdmin && (
+            <button
+              type="button"
+              onClick={() => setModalSolicitudesOpen(true)}
+              className="w-full min-h-[52px] px-6 py-3 bg-secondary hover:bg-secondary/80 text-foreground border border-secondary font-black text-sm uppercase tracking-wider rounded-2xl transition-all shadow-sm text-center flex items-center justify-center gap-2 relative"
             >
-              <span>+ Inscribir Equipo</span>
-            </Link>
+              <span>Solicitudes</span>
+              {solicitudes.filter((s) => s.estado === "PENDIENTE").length > 0 && (
+                <span className="absolute top-1/2 -translate-y-1/2 right-4 px-2 py-0.5 bg-primary text-primary-foreground text-[10px] font-black rounded-full shadow-sm border border-primary/20">
+                  {solicitudes.filter((s) => s.estado === "PENDIENTE").length}
+                </span>
+              )}
+            </button>
           )}
 
           {isDuenoOAdmin && (
             <Link
               href={`/partidos/nuevo?torneo_id=${torneo.id}`}
-              className="flex-1 sm:flex-none min-h-[44px] px-6 py-3 bg-secondary hover:bg-secondary/80 text-foreground border border-secondary font-black text-xs uppercase tracking-wider rounded-2xl transition-all shadow-sm text-center flex items-center justify-center gap-2"
+              className="w-full min-h-[52px] px-6 py-3 bg-secondary hover:bg-secondary/80 text-foreground border border-secondary font-black text-sm uppercase tracking-wider rounded-2xl transition-all shadow-sm text-center flex items-center justify-center gap-2"
             >
               <span>Programar Partido</span>
             </Link>
           )}
         </div>
 
-        {/* DASHBOARD MODULAR INTERACTIVO (4 TARJETAS DE VISTA PREVIA) */}
+
+
+        {/* DASHBOARD MODULAR INTERACTIVO (4 TARJETAS DE VISTA PREVIA CON DATOS REALES) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           
-          {/* TARJETA 1: EQUIPOS PARTICIPANTES (PREVIEW CON DEGRADADO) */}
+          {/* TARJETA 1: EQUIPOS PARTICIPANTES */}
           <div
             onClick={() => setModalEquiposOpen(true)}
             className="bg-card rounded-3xl border border-secondary p-6 shadow-sm hover:border-primary/50 transition-all cursor-pointer group flex flex-col justify-between space-y-4 hover:shadow-xl"
@@ -268,7 +444,6 @@ export default function DetalleTorneoPage() {
               </span>
             </div>
 
-            {/* Escudos PNG sobre Degradado del Color Oficial del Club (Sin Silueta Circular) */}
             <div className="flex items-center gap-2.5 overflow-hidden py-2">
               {equipos.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Sin equipos inscritos aún.</p>
@@ -316,7 +491,7 @@ export default function DetalleTorneoPage() {
             </div>
           </div>
 
-          {/* TARJETA 2: ROL DE JUEGOS (PREVIEW CON DEGRADADO DE COLOR OFICIAL) */}
+          {/* TARJETA 2: ROL DE JUEGOS Y BRACKET (DATOS REALES) */}
           <div
             onClick={() => setModalCalendarioOpen(true)}
             className="bg-card rounded-3xl border border-secondary p-6 shadow-sm hover:border-primary/50 transition-all cursor-pointer group flex flex-col justify-between space-y-4 hover:shadow-xl"
@@ -324,53 +499,72 @@ export default function DetalleTorneoPage() {
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20">
-                  Próximo Encuentro
+                  Fixture & Encontrazos
                 </span>
                 <h3 className="text-xl font-black text-foreground tracking-tight mt-2">
                   Rol de Juegos
                 </h3>
               </div>
               <span className="text-xs font-extrabold text-muted-foreground bg-background px-3 py-1.5 rounded-2xl border border-secondary">
-                Jornada 1
+                {partidos.length} Partidos
               </span>
             </div>
 
-            {/* Preview del Próximo Partido alineado simétricamente con min-w-0 */}
-            {MOCK_PARTIDOS.length > 0 && (
+            {partidos.length === 0 ? (
+              <div className="bg-background rounded-2xl border border-secondary p-4 text-center">
+                <p className="text-xs text-muted-foreground font-semibold">
+                  Aún no se ha generado el fixture de encuentros.
+                </p>
+              </div>
+            ) : (
               <div className="bg-background rounded-2xl border border-secondary p-3 flex items-center justify-between gap-2 overflow-hidden">
-                <div
-                  className="flex items-center gap-2 flex-1 min-w-0 p-2 rounded-xl"
-                  style={{
-                    background: `linear-gradient(90deg, ${MOCK_PARTIDOS[0].localColor}40 0%, transparent 100%)`,
-                  }}
-                >
-                  <span
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: MOCK_PARTIDOS[0].localColor }}
-                  />
-                  <span className="font-bold text-xs text-foreground truncate min-w-0">
-                    {MOCK_PARTIDOS[0].local}
-                  </span>
-                </div>
+                {(() => {
+                  const p = partidos[0];
+                  const eqLoc = equipoMap.get(p.equipo_local_id) || p.equipo_local;
+                  const eqVis = equipoMap.get(p.equipo_visitante_id) || p.equipo_visitante;
+                  const colorLoc = eqLoc?.color || "#991b1b";
+                  const colorVis = eqVis?.color || "#1e3a8a";
 
-                <span className="px-2.5 py-1 bg-secondary rounded-lg font-black text-xs text-foreground flex-shrink-0">
-                  VS
-                </span>
+                  return (
+                    <>
+                      <div
+                        className="flex items-center gap-2 flex-1 min-w-0 p-2 rounded-xl"
+                        style={{
+                          background: `linear-gradient(90deg, ${colorLoc}40 0%, transparent 100%)`,
+                        }}
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: colorLoc }}
+                        />
+                        <span className="font-bold text-xs text-foreground truncate min-w-0">
+                          {eqLoc?.nombre || "Local"}
+                        </span>
+                      </div>
 
-                <div
-                  className="flex items-center gap-2 flex-1 min-w-0 justify-end p-2 rounded-xl text-right"
-                  style={{
-                    background: `linear-gradient(270deg, ${MOCK_PARTIDOS[0].visitanteColor}40 0%, transparent 100%)`,
-                  }}
-                >
-                  <span className="font-bold text-xs text-foreground truncate min-w-0">
-                    {MOCK_PARTIDOS[0].visitante}
-                  </span>
-                  <span
-                    className="w-3 h-3 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: MOCK_PARTIDOS[0].visitanteColor }}
-                  />
-                </div>
+                      <span className="px-2.5 py-1 bg-secondary rounded-lg font-black text-xs text-foreground flex-shrink-0">
+                        {p.datos_adicionales?.marcador_local != null
+                          ? `${p.datos_adicionales.marcador_local} - ${p.datos_adicionales.marcador_visitante}`
+                          : "VS"}
+                      </span>
+
+                      <div
+                        className="flex items-center gap-2 flex-1 min-w-0 justify-end p-2 rounded-xl text-right"
+                        style={{
+                          background: `linear-gradient(270deg, ${colorVis}40 0%, transparent 100%)`,
+                        }}
+                      >
+                        <span className="font-bold text-xs text-foreground truncate min-w-0">
+                          {eqVis?.nombre || "Visitante"}
+                        </span>
+                        <span
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: colorVis }}
+                        />
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             )}
 
@@ -379,66 +573,16 @@ export default function DetalleTorneoPage() {
                 type="button"
                 className="min-h-[40px] px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer"
               >
-                Ver Rol de Juegos →
+                Ver Fixture Completo →
               </button>
             </div>
           </div>
 
-          {/* TARJETA 3: TABLA DE POSICIONES (PREVIEW) */}
-          <div
-            onClick={() => setModalPosicionesOpen(true)}
-            className="bg-card rounded-3xl border border-secondary p-6 shadow-sm hover:border-primary/50 transition-all cursor-pointer group flex flex-col justify-between space-y-4 hover:shadow-xl"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20">
-                  Clasificación General
-                </span>
-                <h3 className="text-xl font-black text-foreground tracking-tight mt-2">
-                  Tabla de Posiciones
-                </h3>
-              </div>
-              <span className="text-xs font-extrabold text-muted-foreground bg-background px-3 py-1.5 rounded-2xl border border-secondary">
-                Fase Regular
-              </span>
-            </div>
 
-            <div className="space-y-2">
-              {tablaPosiciones.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Sin datos de tabla.</p>
-              ) : (
-                tablaPosiciones.slice(0, 2).map((tp) => (
-                  <div
-                    key={tp.pos}
-                    className="flex items-center justify-between text-xs font-bold bg-background p-2 rounded-xl border border-secondary/50"
-                  >
-                    <div className="flex items-center gap-2 truncate min-w-0">
-                      <span className="text-muted-foreground font-black flex-shrink-0">#{tp.pos}</span>
-                      <span
-                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: tp.color }}
-                      />
-                      <span className="truncate min-w-0">{tp.equipo}</span>
-                    </div>
-                    <span className="text-primary font-black px-2 py-0.5 rounded bg-primary/10 flex-shrink-0">
-                      {tp.pts} pts
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
 
-            <div className="pt-3 border-t border-secondary flex items-center justify-end">
-              <button
-                type="button"
-                className="min-h-[40px] px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm flex items-center justify-center cursor-pointer"
-              >
-                Ver Tabla →
-              </button>
-            </div>
-          </div>
 
-          {/* TARJETA 4: LÍDERES DE GOLEO (PREVIEW) */}
+
+          {/* TARJETA 4: LÍDERES DE GOLEO REAL (ESTADO LIMPIO) */}
           <div
             onClick={() => setModalGoleoOpen(true)}
             className="bg-card rounded-3xl border border-secondary p-6 shadow-sm hover:border-primary/50 transition-all cursor-pointer group flex flex-col justify-between space-y-4 hover:shadow-xl"
@@ -460,19 +604,21 @@ export default function DetalleTorneoPage() {
             <div className="bg-background p-3 rounded-2xl border border-secondary flex items-center justify-between gap-2">
               <div className="flex items-center gap-3 truncate min-w-0">
                 <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-black text-xs flex items-center justify-center border border-primary/20 flex-shrink-0">
-                  1
+                  <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                  </svg>
                 </div>
                 <div className="truncate min-w-0">
                   <p className="font-bold text-xs text-foreground truncate min-w-0">
-                    {MOCK_TABLA_GOLEO[0].jugador}
+                    Sin goles registrados
                   </p>
                   <p className="text-[10px] text-muted-foreground truncate min-w-0">
-                    {MOCK_TABLA_GOLEO[0].equipo}
+                    Los goles capturados en la PWA aparecerán aquí.
                   </p>
                 </div>
               </div>
               <span className="text-xl font-black text-primary flex-shrink-0">
-                {MOCK_TABLA_GOLEO[0].goles} Goles
+                0 Goles
               </span>
             </div>
 
@@ -488,29 +634,91 @@ export default function DetalleTorneoPage() {
 
         </div>
 
-        {/* REGLAS DEL TORNEO (UBICADAS ARRIBA DE LA ZONA DE PELIGRO) */}
-        <div className="bg-card rounded-3xl border border-secondary p-6 shadow-sm space-y-3">
-          <div className="pb-3 border-b border-secondary">
-            <h3 className="text-lg font-black text-foreground tracking-tight">
-              Reglas y Detalles del Torneo
+        {/* ESTRUCTURA DEL TORNEO (BRACKET / LIGA) */}
+        {torneo.datos_adicionales?.formato && (
+          <div className="bg-card rounded-3xl border border-secondary p-6 shadow-sm overflow-hidden">
+            <h3 className="text-xl font-black text-foreground tracking-tight mb-4 flex items-center gap-2">
+              Estructura del Torneo
+              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest bg-secondary/50 px-2.5 py-1 rounded-full border border-secondary">
+                Previsualización Oficial
+              </span>
             </h3>
-            <p className="text-xs text-muted-foreground">
-              Indicaciones oficiales escritas por la organización del torneo.
+            <BracketPreview
+              numEquipos={torneo.max_equipos || torneo.datos_adicionales.formato.num_equipos || equipos.length || 4}
+              tipoFormato={torneo.datos_adicionales.formato.tipo_formato}
+              terCerLugar={torneo.datos_adicionales.formato.tercer_lugar}
+              clasificados={torneo.datos_adicionales.formato.clasificados_playoffs}
+              numGrupos={torneo.datos_adicionales.formato.num_grupos}
+              equiposPorGrupo={torneo.datos_adicionales.formato.equipos_por_grupo}
+              clasificadosPorGrupo={torneo.datos_adicionales.formato.clasificados_por_grupo}
+              teamNames={equipos.map(e => e.nombre)}
+              tablaPosiciones={tablaPosiciones}
+              liguillaMatches={partidos
+                .filter(p => ["Semis", "Final", "Cuartos", "8vos", "16vos"].includes(p.datos_adicionales?.fase))
+                .map(p => ({
+                  fase: p.datos_adicionales?.fase,
+                  local: equipoMap.get(p.equipo_local_id)?.nombre || "",
+                  visitante: equipoMap.get(p.equipo_visitante_id)?.nombre || "",
+                  gl: p.datos_adicionales?.marcador_local,
+                  gv: p.datos_adicionales?.marcador_visitante,
+                  estado: p.datos_adicionales?.estado,
+                }))}
+              onTableClick={() => setModalPosicionesOpen(true)}
+              onBracketClick={() => setModalBracketOpen(true)}
+            />
+          </div>
+        )}
+
+        {/* DESCRIPCIÓN Y REGLAS DEL TORNEO */}
+        {(torneo.datos_adicionales?.descripcion || reglas) ? (
+          <div className="bg-card rounded-3xl border border-secondary p-6 shadow-sm space-y-4">
+            <div className="pb-3 border-b border-secondary">
+              <h3 className="text-xl font-black text-foreground tracking-tight">
+                Descripción
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Detalles oficiales e indicaciones escritas por la organización del torneo.
+              </p>
+            </div>
+
+            {torneo.datos_adicionales?.descripcion && (
+              <div className="bg-background/50 rounded-2xl border border-secondary/50 p-4">
+                <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                  {torneo.datos_adicionales.descripcion}
+                </p>
+              </div>
+            )}
+
+            {reglas && (
+              <div className={torneo.datos_adicionales?.descripcion ? "pt-2" : ""}>
+                {torneo.datos_adicionales?.descripcion && (
+                  <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground mb-2">
+                    Reglas Especiales
+                  </p>
+                )}
+                <div className="bg-background/50 rounded-2xl border border-secondary/50 p-4 whitespace-pre-wrap text-sm text-foreground/90 leading-relaxed">
+                  {reglas}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-card rounded-3xl border border-secondary p-6 shadow-sm space-y-3">
+            <div className="pb-3 border-b border-secondary">
+              <h3 className="text-xl font-black text-foreground tracking-tight">
+                Descripción
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Detalles oficiales e indicaciones escritas por la organización del torneo.
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground py-4 text-center">
+              El organizador no ha especificado una descripción ni reglas adicionales para este torneo.
             </p>
           </div>
+        )}
 
-          {reglas ? (
-            <div className="bg-background rounded-2xl border border-secondary p-5 whitespace-pre-wrap text-sm text-foreground leading-relaxed">
-              {reglas}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground py-4 text-center">
-              El organizador no ha especificado reglas adicionales para este torneo.
-            </p>
-          )}
-        </div>
-
-        {/* ZONA DE PELIGRO Y ELIMINACIÓN DE TORNEO (HASTA ABAJO DE TODO) */}
+        {/* ZONA DE PELIGRO Y ELIMINACIÓN DE TORNEO */}
         {isDuenoOAdmin && (
           <div className="p-6 rounded-3xl border border-red-500/30 bg-red-500/5 shadow-sm space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -548,7 +756,7 @@ export default function DetalleTorneoPage() {
                     Equipos Inscritos ({equipos.length})
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Lista oficial de clubes participantes en la liguilla.
+                    Lista oficial de clubes participantes.
                   </p>
                 </div>
                 <button
@@ -559,6 +767,21 @@ export default function DetalleTorneoPage() {
                   ✕
                 </button>
               </div>
+
+              {/* AVISO AL ORGANIZADOR / USUARIOS SI EL FIXTURE YA FUE GENERADO */}
+              {partidos.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3">
+                  <span className="text-amber-500 text-lg flex-shrink-0">⚠️</span>
+                  <div>
+                    <h4 className="text-xs font-black text-amber-500 uppercase tracking-wider">
+                      Torneo Iniciado (Fixture Generado)
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                      Una vez generado el fixture o iniciado el torneo no se pueden agregar ni eliminar equipos.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="overflow-y-auto flex-1 p-1">
                 {equipos.length === 0 ? (
@@ -572,40 +795,54 @@ export default function DetalleTorneoPage() {
                       return (
                         <div
                           key={eq.id}
-                          className="bg-background rounded-2xl border border-secondary p-4 flex items-center gap-4 relative overflow-hidden shadow-sm"
+                          className="bg-background rounded-2xl border border-secondary p-4 flex items-center justify-between gap-3 relative overflow-hidden shadow-sm"
                           style={{
                             background: `linear-gradient(135deg, ${clubColor}25 0%, var(--color-card) 80%)`,
                           }}
                         >
-                          {/* Escudo PNG Nativo (Sin silueta circular) */}
-                          <div className="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0 p-1">
-                            {eq.logo_url ? (
-                              <img
-                                src={eq.logo_url}
-                                alt={eq.nombre}
-                                className="max-w-full max-h-full object-contain filter drop-shadow-md"
-                              />
-                            ) : (
-                              <span className="text-xl font-black text-white uppercase">
-                                {eq.nombre.charAt(0)}
-                              </span>
-                            )}
-                          </div>
+                          <div className="flex items-center gap-3 truncate flex-1 min-w-0">
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0 p-1">
+                              {eq.logo_url ? (
+                                <img
+                                  src={eq.logo_url}
+                                  alt={eq.nombre}
+                                  className="max-w-full max-h-full object-contain filter drop-shadow-md"
+                                />
+                              ) : (
+                                <span className="text-lg font-black text-white uppercase">
+                                  {eq.nombre.charAt(0)}
+                                </span>
+                              )}
+                            </div>
 
-                          <div className="flex-1 truncate">
-                            <h4 className="font-bold text-foreground text-sm truncate">
-                              {eq.nombre}
-                            </h4>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span
-                                className="w-2.5 h-2.5 rounded-full border border-white/20"
-                                style={{ backgroundColor: clubColor }}
-                              />
-                              <span className="text-[10px] uppercase font-bold text-muted-foreground">
-                                Club Registrado
-                              </span>
+                            <div className="flex-1 truncate min-w-0">
+                              <h4 className="font-bold text-foreground text-sm truncate">
+                                {eq.nombre}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full border border-white/20 flex-shrink-0"
+                                  style={{ backgroundColor: clubColor }}
+                                />
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground truncate">
+                                  Club Registrado
+                                </span>
+                              </div>
                             </div>
                           </div>
+
+                          {/* SOLO EL ORGANIZADOR/ADMIN PUEDE ELIMINAR Y SOLO SI NO SE HA GENERADO FIXTURE */}
+                          {isDuenoOAdmin && partidos.length === 0 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRetirarEquipo(eq.id, eq.nombre)}
+                              disabled={retirandoEquipoId === eq.id}
+                              className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all border border-red-500/20 flex-shrink-0 cursor-pointer"
+                              title="Retirar equipo del torneo"
+                            >
+                              {retirandoEquipoId === eq.id ? "..." : "Eliminar"}
+                            </button>
+                          )}
                         </div>
                       );
                     })}
@@ -614,7 +851,7 @@ export default function DetalleTorneoPage() {
               </div>
 
               <div className="pt-3 border-t border-secondary flex items-center justify-between gap-3">
-                {!isInvitado && (
+                {!isInvitado && partidos.length === 0 && (
                   <Link
                     href={`/torneos/${torneo.id}/inscribir`}
                     className="px-5 py-2.5 bg-primary text-primary-foreground font-black text-xs uppercase tracking-wider rounded-xl hover:bg-primary-light transition-all shadow"
@@ -634,17 +871,17 @@ export default function DetalleTorneoPage() {
           </div>
         )}
 
-        {/* 2. MODAL COMPLETO DE ROL DE JUEGOS (CON DEGRADADO POR EQUIPO) */}
+        {/* 2. MODAL COMPLETO DE ROL DE JUEGOS Y BRACKET (JORNADAS REALES) */}
         {modalCalendarioOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-card rounded-3xl border border-secondary max-w-2xl w-full p-6 shadow-2xl space-y-5 max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="bg-card rounded-3xl border border-secondary max-w-3xl w-full p-6 shadow-2xl space-y-5 max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200">
               <div className="flex justify-between items-center pb-3 border-b border-secondary">
                 <div>
                   <h3 className="text-xl font-black text-foreground tracking-tight">
-                    Rol de Juegos Completo
+                    Rol de Juegos & Bracket por Jornadas
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Calendario oficial de jornadas y marcadores.
+                    Calendario oficial de partidos del torneo ({partidos.length} en total).
                   </p>
                 </div>
                 <button
@@ -656,64 +893,98 @@ export default function DetalleTorneoPage() {
                 </button>
               </div>
 
-              <div className="overflow-y-auto flex-1 p-1 space-y-3">
-                {MOCK_PARTIDOS.map((match) => (
-                  <div
-                    key={match.id}
-                    className="bg-background rounded-2xl border border-secondary p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm relative overflow-hidden"
-                  >
-                    <div>
-                      <span className="text-[10px] font-black text-primary uppercase tracking-widest bg-primary/10 px-2.5 py-1 rounded-md border border-primary/20">
-                        {match.jornada}
-                      </span>
-                      <p className="text-xs font-bold text-foreground mt-1.5">
-                        {match.fecha} • {match.hora}
-                      </p>
-                      <p className="text-xs text-muted-foreground">{match.cancha}</p>
-                    </div>
-
-                    <div className="flex items-center gap-2 bg-card p-2 rounded-2xl border border-secondary flex-1 max-w-md">
-                      {/* Lado Local con Degradado de su Color Oficial */}
-                      <div
-                        className="flex items-center gap-2 flex-1 min-w-0 justify-end text-right p-2 rounded-xl transition-all"
-                        style={{
-                          background: `linear-gradient(90deg, ${match.localColor}40 0%, transparent 100%)`,
-                        }}
+              <div className="overflow-y-auto flex-1 p-1 space-y-6">
+                {partidos.length === 0 ? (
+                  <div className="py-12 text-center space-y-4">
+                    <p className="text-sm font-bold text-muted-foreground">
+                      Aún no hay partidos en este torneo.
+                    </p>
+                    {isDuenoOAdmin && equipos.length >= 2 && (
+                      <Link
+                        href={`/partidos/nuevo?torneo_id=${torneo.id}`}
+                        className="inline-block px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow transition-all"
                       >
-                        <span className="font-bold text-xs text-foreground truncate min-w-0">
-                          {match.local}
-                        </span>
-                        <span
-                          className="w-3.5 h-3.5 rounded-full border border-white/20 flex-shrink-0 shadow-sm"
-                          style={{ backgroundColor: match.localColor }}
-                        />
-                      </div>
-
-                      {/* Marcador */}
-                      <div className="px-3 py-1 bg-background rounded-xl font-black text-xs border border-secondary shadow-inner flex-shrink-0">
-                        {match.estado === "Finalizado"
-                          ? `${match.marcadorLocal} - ${match.marcadorVisitante}`
-                          : "VS"}
-                      </div>
-
-                      {/* Lado Visitante con Degradado de su Color Oficial */}
-                      <div
-                        className="flex items-center gap-2 flex-1 min-w-0 text-left p-2 rounded-xl transition-all"
-                        style={{
-                          background: `linear-gradient(270deg, ${match.visitanteColor}40 0%, transparent 100%)`,
-                        }}
-                      >
-                        <span
-                          className="w-3.5 h-3.5 rounded-full border border-white/20 flex-shrink-0 shadow-sm"
-                          style={{ backgroundColor: match.visitanteColor }}
-                        />
-                        <span className="font-bold text-xs text-foreground truncate min-w-0">
-                          {match.visitante}
-                        </span>
-                      </div>
-                    </div>
+                        Programar Partidos Ahora
+                      </Link>
+                    )}
                   </div>
-                ))}
+                ) : (
+                  jornadasOrdenadas.map(([jornadaNum, partidosJornada]) => (
+                    <div key={jornadaNum} className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black uppercase tracking-widest bg-primary/10 text-primary px-3 py-1 rounded-xl border border-primary/20">
+                          {typeof jornadaNum === 'number' ? `Jornada ${jornadaNum}` : jornadaNum}
+                        </span>
+                        <div className="h-[1px] bg-secondary flex-1" />
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3">
+                        {partidosJornada.map((match) => {
+                          const eqLoc = equipoMap.get(match.equipo_local_id) || match.equipo_local;
+                          const eqVis = equipoMap.get(match.equipo_visitante_id) || match.equipo_visitante;
+                          const colorLoc = eqLoc?.color || "#991b1b";
+                          const colorVis = eqVis?.color || "#1e3a8a";
+
+                          const tieneMarcador = match.datos_adicionales?.marcador_local != null;
+
+                          return (
+                            <div
+                              key={match.id}
+                              className="bg-background rounded-2xl border border-secondary p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm relative overflow-hidden"
+                            >
+                              <div className="text-xs">
+                                <p className="font-bold text-foreground">
+                                  {match.fecha ? new Date(match.fecha).toLocaleString("es-MX") : "Fecha por definir"}
+                                </p>
+                                <p className="text-muted-foreground text-[10px]">
+                                  {match.cancha?.nombre || "Cancha por definir"}
+                                </p>
+                              </div>
+
+                              <div className="flex items-center gap-2 bg-card p-2 rounded-2xl border border-secondary flex-1 max-w-md">
+                                <div
+                                  className="flex items-center gap-2 flex-1 min-w-0 justify-end text-right p-2 rounded-xl"
+                                  style={{
+                                    background: `linear-gradient(90deg, ${colorLoc}40 0%, transparent 100%)`,
+                                  }}
+                                >
+                                  <span className="font-bold text-xs text-foreground truncate min-w-0">
+                                    {eqLoc?.nombre || "Local"}
+                                  </span>
+                                  <span
+                                    className="w-3.5 h-3.5 rounded-full border border-white/20 flex-shrink-0 shadow-sm"
+                                    style={{ backgroundColor: colorLoc }}
+                                  />
+                                </div>
+
+                                <div className="px-3 py-1 bg-background rounded-xl font-black text-xs border border-secondary shadow-inner flex-shrink-0">
+                                  {tieneMarcador
+                                    ? `${match.datos_adicionales?.marcador_local} - ${match.datos_adicionales?.marcador_visitante}`
+                                    : "VS"}
+                                </div>
+
+                                <div
+                                  className="flex items-center gap-2 flex-1 min-w-0 text-left p-2 rounded-xl"
+                                  style={{
+                                    background: `linear-gradient(270deg, ${colorVis}40 0%, transparent 100%)`,
+                                  }}
+                                >
+                                  <span
+                                    className="w-3.5 h-3.5 rounded-full border border-white/20 flex-shrink-0 shadow-sm"
+                                    style={{ backgroundColor: colorVis }}
+                                  />
+                                  <span className="font-bold text-xs text-foreground truncate min-w-0">
+                                    {eqVis?.nombre || "Visitante"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
 
               <div className="pt-3 border-t border-secondary flex justify-end">
@@ -729,14 +1000,14 @@ export default function DetalleTorneoPage() {
           </div>
         )}
 
-        {/* 3. MODAL COMPLETO DE TABLA DE POSICIONES */}
+        {/* 3. MODAL COMPLETO DE TABLA DE POSICIONES (REAL) */}
         {modalPosicionesOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
             <div className="bg-card rounded-3xl border border-secondary max-w-3xl w-full p-6 shadow-2xl space-y-5 max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200">
               <div className="flex justify-between items-center pb-3 border-b border-secondary">
                 <div>
                   <h3 className="text-xl font-black text-foreground tracking-tight">
-                    Tabla General de Posiciones Completa
+                    Tabla General de Posiciones
                   </h3>
                   <p className="text-xs text-muted-foreground">
                     Estadísticas clasificatorias acumuladas del torneo.
@@ -815,17 +1086,37 @@ export default function DetalleTorneoPage() {
           </div>
         )}
 
-        {/* 4. MODAL COMPLETO DE LÍDERES DE GOLEO */}
+        {/* MODAL AMPLIADO DEL BRACKET */}
+        {modalBracketOpen && (
+          <BracketModal
+            onClose={() => setModalBracketOpen(false)}
+            torneo={torneo}
+            equipos={equipos}
+            tablaPosiciones={tablaPosiciones}
+            liguillaMatches={partidos
+              .filter(p => ["Semis", "Final", "Cuartos", "8vos", "16vos"].includes(p.datos_adicionales?.fase))
+              .map(p => ({
+                fase: p.datos_adicionales?.fase,
+                local: equipoMap.get(p.equipo_local_id)?.nombre || "",
+                visitante: equipoMap.get(p.equipo_visitante_id)?.nombre || "",
+                gl: p.datos_adicionales?.marcador_local,
+                gv: p.datos_adicionales?.marcador_visitante,
+                estado: p.datos_adicionales?.estado,
+              }))}
+          />
+        )}
+
+        {/* 4. MODAL COMPLETO DE GOLEADORES */}
         {modalGoleoOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
             <div className="bg-card rounded-3xl border border-secondary max-w-xl w-full p-6 shadow-2xl space-y-5 max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200">
               <div className="flex justify-between items-center pb-3 border-b border-secondary">
                 <div>
                   <h3 className="text-xl font-black text-foreground tracking-tight">
-                    Líderes de Goleo Completos
+                    Tabla de Goleo Individual
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Tabla individual de anotadores del torneo.
+                    Registro acumulado de goleadores del torneo.
                   </p>
                 </div>
                 <button
@@ -837,31 +1128,18 @@ export default function DetalleTorneoPage() {
                 </button>
               </div>
 
-              <div className="overflow-y-auto flex-1 p-1 space-y-3">
-                {MOCK_TABLA_GOLEO.map((gol) => (
-                  <div
-                    key={gol.pos}
-                    className="bg-background rounded-2xl border border-secondary p-4 flex items-center justify-between shadow-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-black text-xs flex items-center justify-center border border-primary/20">
-                        {gol.pos}
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-foreground text-sm">
-                          {gol.jugador}
-                        </h4>
-                        <span className="text-[10px] text-muted-foreground font-semibold">
-                          {gol.equipo}
-                        </span>
-                      </div>
-                    </div>
-
-                    <span className="text-xl font-black text-primary">
-                      {gol.goles} Goles
-                    </span>
-                  </div>
-                ))}
+              <div className="overflow-y-auto flex-1 p-4 text-center space-y-2">
+                <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+                  <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                  </svg>
+                </div>
+                <p className="font-bold text-sm text-foreground">
+                  Aún no hay goles registrados en este torneo.
+                </p>
+                <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                  A medida que los partidos se jueguen y se registren en la PWA de arbitraje, los goleadores aparecerán automáticamente en esta tabla.
+                </p>
               </div>
 
               <div className="pt-3 border-t border-secondary flex justify-end">
@@ -877,29 +1155,21 @@ export default function DetalleTorneoPage() {
           </div>
         )}
 
-        {/* 5. MODAL DE CONFIRMACIÓN DE ELIMINACIÓN (ZONA DE PELIGRO) */}
+        {/* MODAL CONFIRMAR ELIMINACIÓN */}
         {modalEliminarOpen && (
           <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-card rounded-3xl border border-red-500/40 max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
-              <div className="space-y-2 text-center">
-                <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-500 font-black text-xl flex items-center justify-center mx-auto border border-red-500/20">
-                  !
-                </div>
-                <h3 className="text-xl font-black text-foreground tracking-tight">
-                  ¿Confirmar Eliminación del Torneo?
-                </h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Esta acción es irreversible. Se eliminarán permanentemente el torneo{" "}
-                  <strong className="text-foreground">{torneo.nombre}</strong>, sus partidos, inscripciones y estadísticas asociadas.
-                </p>
-              </div>
-
-              <div className="pt-4 flex items-center gap-3">
+            <div className="bg-card rounded-3xl border border-red-500/30 max-w-md w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
+              <h3 className="text-lg font-black text-red-500">¿Eliminar Torneo?</h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Esta acción no se puede deshacer. Se eliminarán permanentemente el torneo{" "}
+                <strong className="text-foreground">"{torneo.nombre}"</strong> y todos sus datos asociados.
+              </p>
+              <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setModalEliminarOpen(false)}
                   disabled={deleting}
-                  className="flex-1 py-3 bg-secondary hover:bg-secondary/80 text-foreground font-bold text-xs uppercase tracking-wider rounded-xl transition-colors"
+                  className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground font-bold text-xs rounded-xl transition-colors"
                 >
                   Cancelar
                 </button>
@@ -907,9 +1177,227 @@ export default function DetalleTorneoPage() {
                   type="button"
                   onClick={handleConfirmEliminar}
                   disabled={deleting}
-                  className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-colors shadow-lg disabled:opacity-50"
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-colors shadow disabled:opacity-50"
                 >
                   {deleting ? "Eliminando..." : "Sí, Eliminar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL INVITAR EQUIPOS / COMPARTIR ENLACE */}
+        {modalInvitarOpen && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-card rounded-3xl border border-secondary max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center pb-3 border-b border-secondary">
+                <div>
+                  <h3 className="text-xl font-black text-foreground tracking-tight">
+                    Invitar Equipos al Torneo
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Comparte este enlace público con capitanes y directores técnicos.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModalInvitarOpen(false)}
+                  className="text-muted-foreground hover:text-foreground text-xl font-bold p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="p-4 bg-background rounded-2xl border border-secondary space-y-2">
+                  <span className="block text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                    Enlace de Inscripción Pública
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={typeof window !== "undefined" ? `${window.location.origin}/torneos/${torneo.id}/unirse` : `/torneos/${torneo.id}/unirse`}
+                      className="w-full bg-secondary/50 border border-secondary rounded-xl px-3 py-2 text-xs font-mono text-foreground select-all focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCopiarEnlace}
+                      className={`min-w-[100px] px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex-shrink-0 flex items-center justify-center gap-1.5 ${
+                        copiado
+                          ? "bg-emerald-600 text-white"
+                          : "bg-primary hover:bg-primary-light text-primary-foreground"
+                      }`}
+                    >
+                      {copiado ? (
+                        <>
+                          <svg className="w-4 h-4 text-white animate-in zoom-in spin-in-180 duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>¡Copiado!</span>
+                        </>
+                      ) : (
+                        <span>Copiar</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-background rounded-2xl border border-secondary">
+                    <span className="block text-[10px] uppercase font-bold text-muted-foreground">
+                      Cupo Máximo
+                    </span>
+                    <span className="text-sm font-black text-foreground mt-0.5 block">
+                      {equipos.length} / {torneo.max_equipos || "Ilimitado"}
+                    </span>
+                  </div>
+
+                  <div className="p-3 bg-background rounded-2xl border border-secondary">
+                    <span className="block text-[10px] uppercase font-bold text-muted-foreground">
+                      Fecha Límite
+                    </span>
+                    <span className="text-sm font-black text-foreground mt-0.5 block">
+                      {torneo.fecha_cierre_inscripcion
+                        ? new Date(torneo.fecha_cierre_inscripcion).toLocaleDateString()
+                        : "Sin fecha de corte"}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-muted-foreground">
+                  Los capitanes podrán postular su equipo. Podrás revisar y aprobar cada solicitud desde el panel de solicitudes de este torneo.
+                </p>
+              </div>
+
+              <div className="pt-3 border-t border-secondary flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setModalInvitarOpen(false)}
+                  className="px-5 py-2.5 bg-secondary text-foreground rounded-xl font-bold text-xs hover:bg-secondary/80 transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL BANDEJA DE SOLICITUDES DE INSCRIPCIÓN */}
+        {modalSolicitudesOpen && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-card rounded-3xl border border-secondary max-w-xl w-full p-6 shadow-2xl space-y-5 max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center pb-3 border-b border-secondary">
+                <div>
+                  <h3 className="text-xl font-black text-foreground tracking-tight">
+                    Solicitudes de Inscripción
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Revisa y aprueba los equipos que han solicitado unirse a través del enlace de invitación.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModalSolicitudesOpen(false)}
+                  className="text-muted-foreground hover:text-foreground text-xl font-bold p-1"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {torneo.max_equipos && equipos.length >= torneo.max_equipos && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3">
+                  <span className="text-amber-500 text-lg flex-shrink-0">⚠️</span>
+                  <div>
+                    <h4 className="text-xs font-black text-amber-500 uppercase tracking-wider">
+                      Torneo Lleno
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                      El torneo ya alcanzó el cupo máximo de {torneo.max_equipos} equipos. No puedes aprobar más solicitudes.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <div className="overflow-y-auto flex-1 p-1 space-y-3">
+                {solicitudes.length === 0 ? (
+                  <div className="text-center py-10 space-y-2">
+                    <p className="font-bold text-sm text-foreground">
+                      No hay solicitudes registradas
+                    </p>
+                    <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                      Comparte el enlace del torneo para que los capitanes de equipo envíen sus solicitudes.
+                    </p>
+                  </div>
+                ) : (
+                  solicitudes.map((sol) => {
+                    const esPendiente = sol.estado === "PENDIENTE";
+                    const isProcessing = procesandoSolicitudId === sol.equipo_id;
+
+                    return (
+                      <div
+                        key={sol.id}
+                        className="p-4 bg-background rounded-2xl border border-secondary flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-sm text-foreground">
+                              {sol.equipo?.nombre || `Equipo ID: ${sol.equipo_id.slice(0, 8)}...`}
+                            </span>
+                            <span
+                              className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                sol.estado === "APROBADA"
+                                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                  : sol.estado === "RECHAZADA"
+                                  ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                                  : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                              }`}
+                            >
+                              {sol.estado}
+                            </span>
+                          </div>
+                          <span className="block text-[11px] text-muted-foreground">
+                            Fecha de solicitud: {new Date(sol.fecha_solicitud).toLocaleString()}
+                          </span>
+                        </div>
+
+                        {esPendiente && (
+                          <div className="flex items-center gap-2 self-end sm:self-center">
+                            <button
+                              type="button"
+                              disabled={isProcessing || (Boolean(torneo.max_equipos) && equipos.length >= (torneo.max_equipos as number))}
+                              onClick={() => handleProcesarSolicitud(sol.equipo_id, "ACEPTAR")}
+                              className={`px-4 py-2 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow ${
+                                (Boolean(torneo.max_equipos) && equipos.length >= (torneo.max_equipos as number))
+                                  ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                                  : "bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white"
+                              }`}
+                            >
+                              {isProcessing ? "..." : ((Boolean(torneo.max_equipos) && equipos.length >= (torneo.max_equipos as number)) ? "Lleno" : "Aprobar")}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isProcessing}
+                              onClick={() => handleProcesarSolicitud(sol.equipo_id, "RECHAZAR")}
+                              className="px-4 py-2 bg-destructive/10 hover:bg-destructive/20 border border-destructive/30 text-destructive font-black text-xs uppercase tracking-wider rounded-xl transition-all"
+                            >
+                              {isProcessing ? "..." : "Rechazar"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="pt-3 border-t border-secondary flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setModalSolicitudesOpen(false)}
+                  className="px-5 py-2.5 bg-secondary text-foreground rounded-xl font-bold text-xs hover:bg-secondary/80 transition-colors"
+                >
+                  Cerrar
                 </button>
               </div>
             </div>

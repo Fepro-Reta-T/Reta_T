@@ -20,14 +20,15 @@ class EquipoService:
         self.participante_repo = participante_repo or ParticipanteRepository(repo.db)
 
     async def crear(self, datos: EquipoCreate, creator_id: Optional[UUID] = None) -> Equipo:
-        # Validar que el sport_id referenciado en datos_adicionales exista en BD
-        sport_id = (datos.datos_adicionales or {}).get("sport_id")
+        # Validar que el sport_id (campo directo o en datos_adicionales) exista en BD
+        sport_id = datos.sport_id or (datos.datos_adicionales or {}).get("sport_id")
         if sport_id:
             result = await self.repo.db.execute(
                 select(Sport).where(Sport.id == sport_id)
             )
             if not result.scalar_one_or_none():
                 raise ValueError(f"El deporte con ID '{sport_id}' no existe.")
+            datos.sport_id = sport_id
         return await self.repo.crear(datos, creator_id=creator_id)
 
     async def listar(self) -> List[Equipo]:
@@ -41,6 +42,9 @@ class EquipoService:
 
     async def eliminar(self, equipo_id: UUID) -> bool:
         return await self.repo.eliminar(equipo_id)
+
+    async def transferir(self, equipo_id: UUID, nuevo_creator_id: UUID) -> Optional[Equipo]:
+        return await self.repo.transferir(equipo_id, nuevo_creator_id)
 
     # Métodos de gestión de jugadores (Participantes)
     async def agregar_participante(self, equipo_id: UUID, datos: ParticipanteCreate) -> Participante:

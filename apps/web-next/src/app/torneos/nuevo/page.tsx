@@ -71,6 +71,7 @@ export default function NuevoTorneoPage() {
   // Formulario — Fase 1: solo datos básicos
   const [formData, setFormData] = useState({
     nombre: "",
+    descripcion: "",
     imagen_portada: "/Futbol 7.jpg",
     sport_id: "",
     categoria: "",
@@ -208,6 +209,7 @@ export default function NuevoTorneoPage() {
         ...draft,
         paso1: {
           nombre: formData.nombre,
+          descripcion: formData.descripcion,
           imagen_portada: formData.imagen_portada,
           sport_id: formData.sport_id,
           sport_nombre: sports.find((s) => s.id === formData.sport_id)?.nombre || "",
@@ -354,6 +356,16 @@ export default function NuevoTorneoPage() {
                       required
                       placeholder="Ej: Liga Nocturna de Verano 2026"
                       autoFocus
+                    />
+
+                    <label className="block text-sm font-semibold text-foreground mt-4 mb-2">
+                      Descripción o Reglas (Opcional)
+                    </label>
+                    <textarea
+                      value={formData.descripcion}
+                      onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                      className="w-full bg-background border border-secondary rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[100px]"
+                      placeholder="Escribe las reglas, premios, o detalles importantes del torneo..."
                     />
                   </div>
                   <div className="flex justify-end">

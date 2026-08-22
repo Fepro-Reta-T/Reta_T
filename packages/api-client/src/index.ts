@@ -5,3 +5,4 @@ export * from './canchas';
 export * from './equipos';
 export * from './torneos';
 export * from './inscripciones';
+export * from './partidos';

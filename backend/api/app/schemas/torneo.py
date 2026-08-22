@@ -3,6 +3,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
+from .sport import SportResponse
 
 class CategoriaTorneoEnum(str, Enum):
     FEMENIL = "femenil"
@@ -13,6 +14,8 @@ class TorneoBase(BaseModel):
     nombre: str = Field(..., min_length=3, max_length=100)
     categoria: CategoriaTorneoEnum
     sport_id: UUID
+    max_equipos: Optional[int] = None
+    fecha_cierre_inscripcion: Optional[datetime] = None
     datos_adicionales: Optional[dict] = None
 
 class TorneoCreate(TorneoBase):
@@ -22,11 +25,14 @@ class TorneoUpdate(BaseModel):
     nombre: Optional[str] = Field(None, min_length=3, max_length=100)
     categoria: Optional[CategoriaTorneoEnum] = None
     sport_id: Optional[UUID] = None
+    max_equipos: Optional[int] = None
+    fecha_cierre_inscripcion: Optional[datetime] = None
     datos_adicionales: Optional[dict] = None
 
 class TorneoResponse(TorneoBase):
     id: UUID
     organizer_id: UUID
     datos_adicionales: Optional[dict] = None
+    sport: Optional[SportResponse] = None
 
     model_config = ConfigDict(from_attributes=True)

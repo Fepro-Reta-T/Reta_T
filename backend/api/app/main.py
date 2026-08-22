@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import auth, cancha, health, equipo, torneo, sport, municipio
+from app.routers import auth, cancha, health, equipo, torneo, sport, municipio, partido
 
 app = FastAPI(title="Reta_T API", version="0.1.0")
 
@@ -21,4 +21,5 @@ app.include_router(cancha.router)
 app.include_router(equipo.router)
 app.include_router(torneo.router)
 app.include_router(sport.router)
-app.include_router(municipio.router) 
+app.include_router(municipio.router)
+app.include_router(partido.router) 

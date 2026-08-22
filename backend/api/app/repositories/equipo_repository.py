@@ -46,3 +46,12 @@ class EquipoRepository:
         await self.db.delete(equipo)
         await self.db.commit()
         return True
+
+    async def transferir(self, equipo_id: UUID, nuevo_creator_id: UUID) -> Optional[Equipo]:
+        equipo = await self.obtener_por_id(equipo_id)
+        if not equipo:
+            return None
+        equipo.creator_id = nuevo_creator_id
+        await self.db.commit()
+        await self.db.refresh(equipo)
+        return equipo
