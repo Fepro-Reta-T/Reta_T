@@ -1,6 +1,6 @@
-import { BracketPreview } from '@/components/BracketPreview';
 "use client";
 
+import { BracketPreview } from '@/components/BracketPreview';
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AppLayout from "@/components/AppLayout";
@@ -371,48 +371,19 @@ export default function FormatoTorneoPage() {
                   </div>
                   <input
                     type="range"
-                    min={4}
+                    min={2}
                     max={32}
-                    step={4}
+                    step={2}
                     value={formato.num_equipos}
                     onChange={(e) => set("num_equipos", Number(e.target.value))}
                     className="w-full accent-primary h-1.5 rounded-full"
                   />
                   <div className="flex justify-between text-[9px] text-muted-foreground mt-1">
-                    <span>4</span><span>8</span><span>16</span><span>24</span><span>32</span>
+                    <span>2</span><span>6</span><span>12</span><span>18</span><span>24</span><span>32</span>
                   </div>
                 </div>
               )}
 
-              {/* Descripción */}
-              <div className="pt-6 border-t border-secondary space-y-6">
-                <div>
-                  <label className="block font-bold text-foreground text-sm mb-1.5">
-                    Descripción del Torneo <span className="text-muted-foreground font-normal text-xs">(opcional)</span>
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={formato.descripcion || ""}
-                    onChange={(e) => set("descripcion", e.target.value)}
-                    className="w-full px-4 py-3 border border-secondary rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-all placeholder:text-muted-foreground resize-none"
-                    placeholder="Ej: Torneo relámpago, premios al primer lugar, nivel amateur, etc."
-                  />
-                </div>
-
-                {/* Reglas */}
-                <div>
-                  <label className="block font-bold text-foreground text-sm mb-1.5">
-                    Reglas y Detalles Adicionales <span className="text-muted-foreground font-normal text-xs">(opcional)</span>
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={formato.reglas || ""}
-                    onChange={(e) => set("reglas", e.target.value)}
-                    className="w-full px-4 py-3 border border-secondary rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-primary text-sm transition-all placeholder:text-muted-foreground resize-none"
-                    placeholder="Ej: Tolerancia de 15 minutos, credencial obligatoria, etc."
-                  />
-                </div>
-              </div>
             </div>
 
             {/* ── Previsualización del Bracket ──────────────────────────── */}

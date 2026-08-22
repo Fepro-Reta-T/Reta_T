@@ -292,70 +292,85 @@ function ProgramarPartidoContent() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <CustomTeamSelect 
-            label="Equipo Local"
-            equipos={equipos}
-            value={equipoLocalId}
-            onChange={setEquipoLocalId}
-            disabledTeamId={equipoVisitanteId}
-          />
-          <CustomTeamSelect 
-            label="Equipo Visitante"
-            equipos={equipos}
-            value={equipoVisitanteId}
-            onChange={setEquipoVisitanteId}
-            disabledTeamId={equipoLocalId}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-[10px] font-black uppercase text-muted-foreground mb-1.5 tracking-wider">
-              Día del Encuentro (Opcional)
-            </label>
-            <input
-              type="date"
-              value={fechaStr}
-              onChange={(e) => setFechaStr(e.target.value)}
-              className="w-full bg-background border border-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary [color-scheme:dark]"
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="w-full md:w-[45%]">
+            <CustomTeamSelect 
+              label="Equipo Local"
+              equipos={equipos}
+              value={equipoLocalId}
+              onChange={setEquipoLocalId}
+              disabledTeamId={equipoVisitanteId}
             />
           </div>
-          <div>
-            <label className="block text-[10px] font-black uppercase text-muted-foreground mb-1.5 tracking-wider">
-              Hora (Opcional)
-            </label>
-            <input
-              type="time"
-              value={horaStr}
-              onChange={(e) => setHoraStr(e.target.value)}
-              className="w-full bg-background border border-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary [color-scheme:dark]"
+          
+          <div className="w-full md:w-[10%] flex justify-center py-2 md:py-0 mt-4 md:mt-6">
+            <div className="w-10 h-10 rounded-full bg-secondary/50 flex items-center justify-center border border-secondary shadow-sm">
+              <span className="text-xs font-black text-muted-foreground uppercase">VS</span>
+            </div>
+          </div>
+          
+          <div className="w-full md:w-[45%]">
+            <CustomTeamSelect 
+              label="Equipo Visitante"
+              equipos={equipos}
+              value={equipoVisitanteId}
+              onChange={setEquipoVisitanteId}
+              disabledTeamId={equipoLocalId}
             />
           </div>
         </div>
 
-        <div>
-          <label className="block text-[10px] font-black uppercase text-muted-foreground mb-1.5 tracking-wider">
-            Cancha (Opcional)
-          </label>
-          <select
-            value={canchaId}
-            onChange={(e) => setCanchaId(e.target.value)}
-            className="w-full bg-background border border-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
-          >
-            <option value="">Por definir</option>
-            {canchas.map(c => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-          </select>
+        <div className="bg-secondary/10 border border-secondary rounded-2xl p-5 mt-4 space-y-4">
+          <h3 className="text-xs font-bold text-foreground uppercase tracking-wider mb-2">Programación del Encuentro</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[10px] font-black uppercase text-muted-foreground mb-1.5 tracking-wider">
+                Día del Encuentro (Opcional)
+              </label>
+              <input
+                type="date"
+                value={fechaStr}
+                onChange={(e) => setFechaStr(e.target.value)}
+                className="w-full bg-background border border-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary [color-scheme:dark]"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-black uppercase text-muted-foreground mb-1.5 tracking-wider">
+                Hora (Opcional)
+              </label>
+              <input
+                type="time"
+                value={horaStr}
+                onChange={(e) => setHoraStr(e.target.value)}
+                className="w-full bg-background border border-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary [color-scheme:dark]"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-black uppercase text-muted-foreground mb-1.5 tracking-wider">
+              Cancha (Opcional)
+            </label>
+            <select
+              value={canchaId}
+              onChange={(e) => setCanchaId(e.target.value)}
+              className="w-full bg-background border border-secondary rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary appearance-none"
+            >
+              <option value="">Por definir</option>
+              {canchas.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* TOGGLE AMISTOSO (DESTACADO) */}
         <div 
           onClick={() => setEsAmistoso(!esAmistoso)}
-          className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between gap-4 ${
+          className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between gap-4 mt-2 ${
             esAmistoso 
               ? "bg-blue-500/10 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.15)]" 
               : "bg-secondary/20 border-secondary hover:border-secondary/80"
@@ -370,8 +385,8 @@ function ProgramarPartidoContent() {
             </p>
           </div>
           <div className="flex-shrink-0">
-            <div className={`w-12 h-6 rounded-full p-1 transition-colors ${esAmistoso ? "bg-blue-500" : "bg-muted"}`}>
-              <div className={`w-4 h-4 rounded-full bg-white transition-transform ${esAmistoso ? "translate-x-6" : "translate-x-0"}`} />
+            <div className={`w-14 h-8 rounded-full p-1 transition-colors flex items-center ${esAmistoso ? "bg-blue-500" : "bg-muted-foreground/30"}`}>
+              <div className={`w-6 h-6 rounded-full bg-white shadow-sm transition-transform duration-300 ${esAmistoso ? "translate-x-6" : "translate-x-0"}`} />
             </div>
           </div>
         </div>

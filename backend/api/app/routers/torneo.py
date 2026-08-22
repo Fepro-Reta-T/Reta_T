@@ -97,11 +97,11 @@ async def inscribir_equipo(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para inscribir equipos en este torneo"
         )
-    resultado = await service.inscribir_equipo(torneo_id, target_equipo_id)
-    if not resultado:
+    success, message = await service.inscribir_equipo(torneo_id, target_equipo_id)
+    if not success:
         raise HTTPException(
             status_code=400,
-            detail="No se pudo inscribir el equipo (posible duplicado, deporte no coincide o equipo no existe)"
+            detail=message
         )
     return {
         "message": "Equipo inscrito correctamente",
@@ -136,7 +136,7 @@ async def retirar_equipo(
     if not resultado:
         raise HTTPException(
             status_code=400,
-            detail="No se pudo retirar el equipo"
+            detail="No se pudo retirar el equipo. Una vez generado el fixture o iniciado el torneo no se pueden eliminar equipos."
         )
 
 # ✅ Solicitudes

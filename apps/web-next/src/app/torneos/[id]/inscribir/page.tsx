@@ -106,7 +106,7 @@ export default function InscribirEquipoPage() {
       }, 1500);
     } catch (err: any) {
       console.error("Error al inscribir:", err);
-      setError(err?.message || "Error al inscribir el equipo.");
+      setError(err?.detail || err?.message || "Error al inscribir el equipo.");
     } finally {
       setLoadingInscripcion(false);
     }
@@ -200,7 +200,9 @@ export default function InscribirEquipoPage() {
           <div className="bg-card rounded-2xl border border-secondary p-4 flex items-center justify-between text-xs font-bold shadow-sm">
             <span className="text-muted-foreground">
               Equipos Inscritos Actualmente:{" "}
-              <strong className="text-foreground">{equiposInscritos.length}</strong>
+              <strong className="text-foreground">
+                {torneo.max_equipos ? `${equiposInscritos.length} / ${torneo.max_equipos}` : equiposInscritos.length}
+              </strong>
             </span>
             <span className="text-muted-foreground">
               Clubes Disponibles:{" "}
@@ -209,7 +211,17 @@ export default function InscribirEquipoPage() {
           </div>
 
           {/* FORMULARIO CON TARJETAS SELECCIONABLES DE CLUBES */}
-          {equiposDisponibles.length > 0 ? (
+          {Boolean(torneo.max_equipos) && equiposInscritos.length >= (torneo.max_equipos as number) ? (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-3xl p-6 text-center space-y-3">
+              <span className="text-amber-500 text-3xl">⚠️</span>
+              <h4 className="font-bold text-amber-500 uppercase tracking-wider">
+                Torneo Lleno
+              </h4>
+              <p className="text-sm text-amber-500/80 max-w-sm mx-auto">
+                Este torneo ya ha alcanzado el cupo máximo de equipos inscritos. No es posible enviar más solicitudes.
+              </p>
+            </div>
+          ) : equiposDisponibles.length > 0 ? (
             <form
               onSubmit={handleInscribir}
               className="bg-card rounded-3xl border border-secondary p-6 space-y-6 shadow-sm"
@@ -358,13 +370,6 @@ export default function InscribirEquipoPage() {
                           {equipo.nombre}
                         </span>
                       </div>
-
-                      <button
-                        onClick={() => handleRetirar(equipo.id)}
-                        className="text-xs font-bold text-red-500 hover:text-red-700 hover:underline px-2 py-1 rounded-lg"
-                      >
-                        Retirar
-                      </button>
                     </div>
                   );
                 })}

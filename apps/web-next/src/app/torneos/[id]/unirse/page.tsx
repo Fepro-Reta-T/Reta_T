@@ -180,7 +180,7 @@ export default function UnirseTorneoPage() {
 
   // Verificaciones de cupo y vigencia
   const totalInscritos = equiposInscritos.length;
-  const maxEquipos = torneo.max_equipos || null;
+  const maxEquipos = torneo.max_equipos || torneo.datos_adicionales?.formato?.num_equipos || null;
   const cupoLleno = maxEquipos !== null && totalInscritos >= maxEquipos;
   
   let fechaExpirada = false;

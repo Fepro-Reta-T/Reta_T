@@ -101,7 +101,7 @@ export default function EquiposTorneoPage() {
           imagen_portada: paso1.imagen_portada,
           formato: paso2,
           equipo_ids: [],
-          descripcion: paso2.descripcion ?? "",
+          descripcion: paso1.descripcion ?? "",
           reglas: paso2.reglas ?? "",
           sport_nombre: paso1.sport_nombre,
         },
@@ -191,13 +191,13 @@ export default function EquiposTorneoPage() {
               </div>
             </div>
 
-            {paso2.descripcion && (
+            {paso1.descripcion && (
               <div>
                 <span className="block text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                   Descripción
                 </span>
                 <p className="text-xs text-foreground mt-1 line-clamp-3">
-                  {paso2.descripcion}
+                  {paso1.descripcion}
                 </p>
               </div>
             )}

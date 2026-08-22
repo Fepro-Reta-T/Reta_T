@@ -17,8 +17,7 @@ class TorneoRepository:
         torneo = Tournament(**datos.model_dump(), organizer_id=organizer_id)
         self.db.add(torneo)
         await self.db.commit()
-        await self.db.refresh(torneo)
-        return torneo
+        return await self.obtener(torneo.id)
 
     async def listar(self) -> List[Tournament]:
         resultado = await self.db.execute(
@@ -48,8 +47,7 @@ class TorneoRepository:
         for key, value in update_data.items():
             setattr(torneo, key, value)
         await self.db.commit()
-        await self.db.refresh(torneo)
-        return torneo
+        return await self.obtener(torneo.id)
 
     async def eliminar(self, torneo_id: UUID) -> bool:
         torneo = await self.obtener(torneo_id)

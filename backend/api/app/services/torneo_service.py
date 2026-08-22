@@ -27,7 +27,7 @@ class TorneoService:
         return await self.repo.eliminar(torneo_id)
 
     # ✅ AGREGADOS: Métodos de inscripción
-    async def inscribir_equipo(self, torneo_id: UUID, equipo_id: UUID) -> bool:
+    async def inscribir_equipo(self, torneo_id: UUID, equipo_id: UUID) -> tuple[bool, str]:
         return await self.inscripcion_repo.inscribir(torneo_id, equipo_id)
 
     async def retirar_equipo(self, torneo_id: UUID, equipo_id: UUID) -> bool:

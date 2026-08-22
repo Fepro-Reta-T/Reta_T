@@ -8,7 +8,7 @@ from app.schemas.partido import PartidoCreate, PartidoUpdate
 from app.models.game import Partido
 from app.models.geo import Cancha
 from app.models.user import User
-from app.utils.fixture_generator import generate_round_robin
+from app.utils.fixture_generator import generate_fixture_for_tournament
 
 class PartidoService:
     def __init__(
@@ -77,26 +77,33 @@ class PartidoService:
         if len(equipos) < 2:
             raise ValueError("Se necesitan al menos 2 equipos inscritos para generar un fixture.")
 
-        # Extraer los IDs de los equipos
         equipo_ids = [e.id for e in equipos]
 
-        # Generar jornadas usando el algoritmo Round-Robin (Método del Círculo)
-        jornadas = generate_round_robin(equipo_ids)
+        # Extraer la configuración de formato del torneo
+        datos_adicionales_torneo = torneo.datos_adicionales or {}
+        formato_config = datos_adicionales_torneo.get("formato", {})
+
+        # Generar fixture según la modalidad y formato
+        partidos_generados = generate_fixture_for_tournament(equipo_ids, formato=formato_config)
 
         partidos_a_crear: List[PartidoCreate] = []
-        for numero_jornada, partidos_jornada in enumerate(jornadas, start=1):
-            for local_id, visitante_id in partidos_jornada:
-                # Omitir descansos (cuando un equipo se empareja con None)
-                if local_id is None or visitante_id is None:
-                    continue
+        for match_info in partidos_generados:
+            local_id = match_info["local"]
+            visitante_id = match_info["visitante"]
 
-                partidos_a_crear.append(
-                    PartidoCreate(
-                        torneo_id=torneo_id,
-                        equipo_local_id=local_id,
-                        equipo_visitante_id=visitante_id,
-                        datos_adicionales={"jornada": numero_jornada}
-                    )
+            if local_id is None or visitante_id is None:
+                continue
+
+            # Construir metadatos adicionales del partido
+            meta = {k: v for k, v in match_info.items() if k not in ("local", "visitante")}
+
+            partidos_a_crear.append(
+                PartidoCreate(
+                    torneo_id=torneo_id,
+                    equipo_local_id=local_id,
+                    equipo_visitante_id=visitante_id,
+                    datos_adicionales=meta
                 )
+            )
 
         return await self.repo.crear_multiples(partidos_a_crear)

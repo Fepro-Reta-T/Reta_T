@@ -7,19 +7,34 @@ import { torneosApi, inscripcionesApi, partidosApi } from "@/lib/api";
 import type { Torneo, Equipo, Partido } from "@reta-t/types";
 import AppLayout from "@/components/AppLayout";
 import { BracketPreview } from "@/components/BracketPreview";
+import { BracketModal } from "./_components/BracketModal";
 
 function getCategoryBadgeClass(categoria: string) {
   const cat = (categoria || "").toLowerCase();
-  if (cat.includes("varonil")) {
-    return "bg-blue-500/15 text-blue-400 border-blue-500/30";
-  }
-  if (cat.includes("femenil")) {
-    return "bg-pink-500/15 text-pink-400 border-pink-500/30";
-  }
-  if (cat.includes("mixto")) {
-    return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
-  }
-  return "bg-amber-500/15 text-amber-400 border-amber-500/30";
+  if (cat.includes("varonil")) return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+  if (cat.includes("femenil")) return "bg-pink-500/10 text-pink-500 border-pink-500/20";
+  if (cat.includes("mixto")) return "bg-purple-500/10 text-purple-500 border-purple-500/20";
+  return "bg-secondary text-muted-foreground border-secondary";
+}
+
+function formatCategoria(categoria: string | undefined | null) {
+  if (!categoria) return "N/A";
+  const c = categoria.toLowerCase();
+  if (c === "varonil") return "Varonil";
+  if (c === "femenil") return "Femenil";
+  if (c === "mixto") return "Mixto";
+  return categoria.charAt(0).toUpperCase() + categoria.slice(1).toLowerCase();
+}
+
+function formatTipoFormato(tipo: string | undefined | null) {
+  if (!tipo) return "N/A";
+  const map: Record<string, string> = {
+    "liga": "Liga Regular",
+    "liga_playoffs": "Liga + Liguilla",
+    "grupos_playoffs": "Grupos + Liguilla",
+    "eliminatoria": "Eliminatoria Directa"
+  };
+  return map[tipo.toLowerCase()] || tipo.replace(/_/g, " ").toUpperCase();
 }
 
 export default function DetalleTorneoPage() {
@@ -40,6 +55,7 @@ export default function DetalleTorneoPage() {
   const [modalPosicionesOpen, setModalPosicionesOpen] = useState(false);
   const [modalGoleoOpen, setModalGoleoOpen] = useState(false);
   const [modalEliminarOpen, setModalEliminarOpen] = useState(false);
+  const [modalBracketOpen, setModalBracketOpen] = useState(false);
   const [modalInvitarOpen, setModalInvitarOpen] = useState(false);
   const [modalSolicitudesOpen, setModalSolicitudesOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -141,6 +157,8 @@ export default function DetalleTorneoPage() {
     }
   }
 
+  const [retirandoEquipoId, setRetirandoEquipoId] = useState<string | null>(null);
+
   async function handleProcesarSolicitud(equipoId: string, accion: "ACEPTAR" | "RECHAZAR") {
     try {
       setProcesandoSolicitudId(equipoId);
@@ -150,10 +168,31 @@ export default function DetalleTorneoPage() {
       const equiposActualizados = await inscripcionesApi.listarEquiposInscritos(torneoId);
       setEquipos(equiposActualizados);
     } catch (err: any) {
-      alert(err.message || "Error al procesar la solicitud");
+      alert(err.detail || err.message || "Error al procesar la solicitud");
       console.error(err);
     } finally {
       setProcesandoSolicitudId(null);
+    }
+  }
+
+  async function handleRetirarEquipo(equipoId: string, equipoNombre: string) {
+    if (partidos.length > 0) {
+      alert("Una vez generado el fixture o iniciado el torneo no se pueden eliminar ni retirar equipos.");
+      return;
+    }
+    if (!confirm(`¿Estás seguro de que deseas eliminar al equipo "${equipoNombre}" de este torneo?`)) {
+      return;
+    }
+    try {
+      setRetirandoEquipoId(equipoId);
+      await inscripcionesApi.retirar(torneoId, equipoId);
+      const equiposActualizados = await inscripcionesApi.listarEquiposInscritos(torneoId);
+      setEquipos(equiposActualizados);
+    } catch (err: any) {
+      alert(err.message || "Error al retirar el equipo");
+      console.error(err);
+    } finally {
+      setRetirandoEquipoId(null);
     }
   }
 
@@ -234,7 +273,7 @@ export default function DetalleTorneoPage() {
     const ml = p.datos_adicionales?.marcador_local;
     const mv = p.datos_adicionales?.marcador_visitante;
 
-    if (estado === "Finalizado" && typeof ml === "number" && typeof mv === "number") {
+    if (estado?.toUpperCase() === "FINALIZADO" && typeof ml === "number" && typeof mv === "number") {
       const el = statsMap.get(p.equipo_local_id);
       const ev = statsMap.get(p.equipo_visitante_id);
 
@@ -274,13 +313,20 @@ export default function DetalleTorneoPage() {
   }).map((row, idx) => ({ pos: idx + 1, ...row }));
 
   // Agrupación de partidos reales por jornada para el Bracket/Rol de Juegos
-  const jornadasMap = new Map<number, Partido[]>();
+  const jornadasMap = new Map<string | number, Partido[]>();
   partidos.forEach((p) => {
-    const j = p.datos_adicionales?.jornada || 1;
+    const j = p.datos_adicionales?.jornada || p.datos_adicionales?.fase || 1;
     if (!jornadasMap.has(j)) jornadasMap.set(j, []);
     jornadasMap.get(j)!.push(p);
   });
-  const jornadasOrdenadas = Array.from(jornadasMap.entries()).sort(([a], [b]) => a - b);
+  const jornadasOrdenadas = Array.from(jornadasMap.entries()).sort(([a], [b]) => {
+    if (typeof a === 'number' && typeof b === 'number') return a - b;
+    if (typeof a === 'number') return -1;
+    if (typeof b === 'number') return 1;
+    if (a === "Semis" && b === "Final") return -1;
+    if (a === "Final" && b === "Semis") return 1;
+    return String(a).localeCompare(String(b));
+  });
 
   return (
     <AppLayout>
@@ -304,17 +350,6 @@ export default function DetalleTorneoPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-card via-card/75 via-45% to-black/30" />
 
           <div className="absolute inset-0 p-6 sm:p-8 flex flex-col justify-end z-10 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`text-xs uppercase tracking-widest font-extrabold backdrop-blur-md px-3 py-1 rounded-full border capitalize shadow-sm ${badgeClass}`}>
-                Categoría: {torneo.categoria}
-              </span>
-              {torneo.sport && (
-                <span className="text-xs uppercase tracking-widest font-extrabold text-foreground bg-card/80 backdrop-blur-md px-3 py-1 rounded-full border border-secondary shadow-sm">
-                  {torneo.sport.nombre}
-                </span>
-              )}
-            </div>
-
             <h1 className="text-2xl sm:text-4xl font-black text-foreground tracking-tight leading-tight drop-shadow-sm">
               {torneo.nombre}
             </h1>
@@ -329,16 +364,16 @@ export default function DetalleTorneoPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <span className="block text-[10px] font-bold text-muted-foreground uppercase">Deporte</span>
-              <span className="block text-sm font-black text-foreground mt-0.5">{torneo.sport?.nombre || "N/A"}</span>
+              <span className="block text-sm font-black text-foreground mt-0.5">{torneo.sport?.nombre || "Fútbol"}</span>
             </div>
             <div>
               <span className="block text-[10px] font-bold text-muted-foreground uppercase">Categoría</span>
-              <span className="block text-sm font-black text-foreground mt-0.5">{torneo.categoria}</span>
+              <span className="block text-sm font-black text-foreground mt-0.5">{formatCategoria(torneo.categoria)}</span>
             </div>
             <div>
               <span className="block text-[10px] font-bold text-muted-foreground uppercase">Tipo</span>
-              <span className="block text-sm font-black text-foreground mt-0.5 uppercase">
-                {torneo.datos_adicionales?.formato?.tipo_formato || "N/A"}
+              <span className="block text-sm font-black text-foreground mt-0.5">
+                {formatTipoFormato(torneo.datos_adicionales?.formato?.tipo_formato)}
               </span>
             </div>
             <div>
@@ -357,7 +392,7 @@ export default function DetalleTorneoPage() {
             onClick={() => setModalInvitarOpen(true)}
             className="w-full min-h-[52px] px-6 py-3 bg-primary hover:bg-primary-light text-primary-foreground font-black text-sm uppercase tracking-wider rounded-2xl transition-all shadow-md text-center flex items-center justify-center gap-2"
           >
-            <span>🔗 Invitar por Enlace</span>
+            <span>Invitar por Enlace</span>
           </button>
 
           {isDuenoOAdmin && (
@@ -545,6 +580,8 @@ export default function DetalleTorneoPage() {
 
 
 
+
+
           {/* TARJETA 4: LÍDERES DE GOLEO REAL (ESTADO LIMPIO) */}
           <div
             onClick={() => setModalGoleoOpen(true)}
@@ -615,31 +652,71 @@ export default function DetalleTorneoPage() {
               equiposPorGrupo={torneo.datos_adicionales.formato.equipos_por_grupo}
               clasificadosPorGrupo={torneo.datos_adicionales.formato.clasificados_por_grupo}
               teamNames={equipos.map(e => e.nombre)}
+              tablaPosiciones={tablaPosiciones}
+              liguillaMatches={partidos
+                .filter(p => ["Semis", "Final", "Cuartos", "8vos", "16vos"].includes(p.datos_adicionales?.fase))
+                .map(p => ({
+                  fase: p.datos_adicionales?.fase,
+                  local: equipoMap.get(p.equipo_local_id)?.nombre || "",
+                  visitante: equipoMap.get(p.equipo_visitante_id)?.nombre || "",
+                  gl: p.datos_adicionales?.marcador_local,
+                  gv: p.datos_adicionales?.marcador_visitante,
+                  estado: p.datos_adicionales?.estado,
+                }))}
+              onTableClick={() => setModalPosicionesOpen(true)}
+              onBracketClick={() => setModalBracketOpen(true)}
             />
           </div>
         )}
 
-        {/* REGLAS DEL TORNEO */}
-        <div className="bg-card rounded-3xl border border-secondary p-6 shadow-sm space-y-3">
-          <div className="pb-3 border-b border-secondary">
-            <h3 className="text-lg font-black text-foreground tracking-tight">
-              Reglas y Detalles del Torneo
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Indicaciones oficiales escritas por la organización del torneo.
+        {/* DESCRIPCIÓN Y REGLAS DEL TORNEO */}
+        {(torneo.datos_adicionales?.descripcion || reglas) ? (
+          <div className="bg-card rounded-3xl border border-secondary p-6 shadow-sm space-y-4">
+            <div className="pb-3 border-b border-secondary">
+              <h3 className="text-xl font-black text-foreground tracking-tight">
+                Descripción
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Detalles oficiales e indicaciones escritas por la organización del torneo.
+              </p>
+            </div>
+
+            {torneo.datos_adicionales?.descripcion && (
+              <div className="bg-background/50 rounded-2xl border border-secondary/50 p-4">
+                <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                  {torneo.datos_adicionales.descripcion}
+                </p>
+              </div>
+            )}
+
+            {reglas && (
+              <div className={torneo.datos_adicionales?.descripcion ? "pt-2" : ""}>
+                {torneo.datos_adicionales?.descripcion && (
+                  <p className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground mb-2">
+                    Reglas Especiales
+                  </p>
+                )}
+                <div className="bg-background/50 rounded-2xl border border-secondary/50 p-4 whitespace-pre-wrap text-sm text-foreground/90 leading-relaxed">
+                  {reglas}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="bg-card rounded-3xl border border-secondary p-6 shadow-sm space-y-3">
+            <div className="pb-3 border-b border-secondary">
+              <h3 className="text-xl font-black text-foreground tracking-tight">
+                Descripción
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Detalles oficiales e indicaciones escritas por la organización del torneo.
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground py-4 text-center">
+              El organizador no ha especificado una descripción ni reglas adicionales para este torneo.
             </p>
           </div>
-
-          {reglas ? (
-            <div className="bg-background rounded-2xl border border-secondary p-5 whitespace-pre-wrap text-sm text-foreground leading-relaxed">
-              {reglas}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground py-4 text-center">
-              El organizador no ha especificado reglas adicionales para este torneo.
-            </p>
-          )}
-        </div>
+        )}
 
         {/* ZONA DE PELIGRO Y ELIMINACIÓN DE TORNEO */}
         {isDuenoOAdmin && (
@@ -679,7 +756,7 @@ export default function DetalleTorneoPage() {
                     Equipos Inscritos ({equipos.length})
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    Lista oficial de clubes participantes en la liguilla.
+                    Lista oficial de clubes participantes.
                   </p>
                 </div>
                 <button
@@ -690,6 +767,21 @@ export default function DetalleTorneoPage() {
                   ✕
                 </button>
               </div>
+
+              {/* AVISO AL ORGANIZADOR / USUARIOS SI EL FIXTURE YA FUE GENERADO */}
+              {partidos.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3">
+                  <span className="text-amber-500 text-lg flex-shrink-0">⚠️</span>
+                  <div>
+                    <h4 className="text-xs font-black text-amber-500 uppercase tracking-wider">
+                      Torneo Iniciado (Fixture Generado)
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                      Una vez generado el fixture o iniciado el torneo no se pueden agregar ni eliminar equipos.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="overflow-y-auto flex-1 p-1">
                 {equipos.length === 0 ? (
@@ -703,39 +795,54 @@ export default function DetalleTorneoPage() {
                       return (
                         <div
                           key={eq.id}
-                          className="bg-background rounded-2xl border border-secondary p-4 flex items-center gap-4 relative overflow-hidden shadow-sm"
+                          className="bg-background rounded-2xl border border-secondary p-4 flex items-center justify-between gap-3 relative overflow-hidden shadow-sm"
                           style={{
                             background: `linear-gradient(135deg, ${clubColor}25 0%, var(--color-card) 80%)`,
                           }}
                         >
-                          <div className="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0 p-1">
-                            {eq.logo_url ? (
-                              <img
-                                src={eq.logo_url}
-                                alt={eq.nombre}
-                                className="max-w-full max-h-full object-contain filter drop-shadow-md"
-                              />
-                            ) : (
-                              <span className="text-xl font-black text-white uppercase">
-                                {eq.nombre.charAt(0)}
-                              </span>
-                            )}
-                          </div>
+                          <div className="flex items-center gap-3 truncate flex-1 min-w-0">
+                            <div className="w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden flex-shrink-0 p-1">
+                              {eq.logo_url ? (
+                                <img
+                                  src={eq.logo_url}
+                                  alt={eq.nombre}
+                                  className="max-w-full max-h-full object-contain filter drop-shadow-md"
+                                />
+                              ) : (
+                                <span className="text-lg font-black text-white uppercase">
+                                  {eq.nombre.charAt(0)}
+                                </span>
+                              )}
+                            </div>
 
-                          <div className="flex-1 truncate">
-                            <h4 className="font-bold text-foreground text-sm truncate">
-                              {eq.nombre}
-                            </h4>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span
-                                className="w-2.5 h-2.5 rounded-full border border-white/20"
-                                style={{ backgroundColor: clubColor }}
-                              />
-                              <span className="text-[10px] uppercase font-bold text-muted-foreground">
-                                Club Registrado
-                              </span>
+                            <div className="flex-1 truncate min-w-0">
+                              <h4 className="font-bold text-foreground text-sm truncate">
+                                {eq.nombre}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span
+                                  className="w-2.5 h-2.5 rounded-full border border-white/20 flex-shrink-0"
+                                  style={{ backgroundColor: clubColor }}
+                                />
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground truncate">
+                                  Club Registrado
+                                </span>
+                              </div>
                             </div>
                           </div>
+
+                          {/* SOLO EL ORGANIZADOR/ADMIN PUEDE ELIMINAR Y SOLO SI NO SE HA GENERADO FIXTURE */}
+                          {isDuenoOAdmin && partidos.length === 0 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRetirarEquipo(eq.id, eq.nombre)}
+                              disabled={retirandoEquipoId === eq.id}
+                              className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all border border-red-500/20 flex-shrink-0 cursor-pointer"
+                              title="Retirar equipo del torneo"
+                            >
+                              {retirandoEquipoId === eq.id ? "..." : "Eliminar"}
+                            </button>
+                          )}
                         </div>
                       );
                     })}
@@ -744,7 +851,7 @@ export default function DetalleTorneoPage() {
               </div>
 
               <div className="pt-3 border-t border-secondary flex items-center justify-between gap-3">
-                {!isInvitado && (
+                {!isInvitado && partidos.length === 0 && (
                   <Link
                     href={`/torneos/${torneo.id}/inscribir`}
                     className="px-5 py-2.5 bg-primary text-primary-foreground font-black text-xs uppercase tracking-wider rounded-xl hover:bg-primary-light transition-all shadow"
@@ -806,7 +913,7 @@ export default function DetalleTorneoPage() {
                     <div key={jornadaNum} className="space-y-3">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-black uppercase tracking-widest bg-primary/10 text-primary px-3 py-1 rounded-xl border border-primary/20">
-                          Jornada {jornadaNum}
+                          {typeof jornadaNum === 'number' ? `Jornada ${jornadaNum}` : jornadaNum}
                         </span>
                         <div className="h-[1px] bg-secondary flex-1" />
                       </div>
@@ -977,6 +1084,26 @@ export default function DetalleTorneoPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* MODAL AMPLIADO DEL BRACKET */}
+        {modalBracketOpen && (
+          <BracketModal
+            onClose={() => setModalBracketOpen(false)}
+            torneo={torneo}
+            equipos={equipos}
+            tablaPosiciones={tablaPosiciones}
+            liguillaMatches={partidos
+              .filter(p => ["Semis", "Final", "Cuartos", "8vos", "16vos"].includes(p.datos_adicionales?.fase))
+              .map(p => ({
+                fase: p.datos_adicionales?.fase,
+                local: equipoMap.get(p.equipo_local_id)?.nombre || "",
+                visitante: equipoMap.get(p.equipo_visitante_id)?.nombre || "",
+                gl: p.datos_adicionales?.marcador_local,
+                gv: p.datos_adicionales?.marcador_visitante,
+                estado: p.datos_adicionales?.estado,
+              }))}
+          />
         )}
 
         {/* 4. MODAL COMPLETO DE GOLEADORES */}
@@ -1178,6 +1305,20 @@ export default function DetalleTorneoPage() {
                 </button>
               </div>
 
+              {torneo.max_equipos && equipos.length >= torneo.max_equipos && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-start gap-3">
+                  <span className="text-amber-500 text-lg flex-shrink-0">⚠️</span>
+                  <div>
+                    <h4 className="text-xs font-black text-amber-500 uppercase tracking-wider">
+                      Torneo Lleno
+                    </h4>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                      El torneo ya alcanzó el cupo máximo de {torneo.max_equipos} equipos. No puedes aprobar más solicitudes.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="overflow-y-auto flex-1 p-1 space-y-3">
                 {solicitudes.length === 0 ? (
                   <div className="text-center py-10 space-y-2">
@@ -1224,11 +1365,15 @@ export default function DetalleTorneoPage() {
                           <div className="flex items-center gap-2 self-end sm:self-center">
                             <button
                               type="button"
-                              disabled={isProcessing}
+                              disabled={isProcessing || (Boolean(torneo.max_equipos) && equipos.length >= (torneo.max_equipos as number))}
                               onClick={() => handleProcesarSolicitud(sol.equipo_id, "ACEPTAR")}
-                              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow"
+                              className={`px-4 py-2 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow ${
+                                (Boolean(torneo.max_equipos) && equipos.length >= (torneo.max_equipos as number))
+                                  ? "bg-secondary text-muted-foreground cursor-not-allowed"
+                                  : "bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white"
+                              }`}
                             >
-                              {isProcessing ? "..." : "Aprobar"}
+                              {isProcessing ? "..." : ((Boolean(torneo.max_equipos) && equipos.length >= (torneo.max_equipos as number)) ? "Lleno" : "Aprobar")}
                             </button>
                             <button
                               type="button"
