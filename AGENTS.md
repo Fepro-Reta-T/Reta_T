@@ -147,9 +147,9 @@ Todo endpoint de estadísticas requiere login (`Depends(get_current_user)`), sin
   Motor de eventos → Estadísticas → Comunidad → Dashboard → Inteligencia → Notificaciones → Patrocinios → IA →
   Escalabilidad).
 - **Prioridad Actual (Fase Activa):** 
-  1. Inscripción de equipos a ligas/torneos. 
-  2. Programación de Partidos (Fixture y asignación de encargados). 
-  3. Desarrollo del Panel de Arbitraje (PWA).
+  1. ~~Inscripción de equipos a ligas/torneos.~~ *(Completado)*
+  2. ~~Programación de Partidos (Fixture y asignación de encargados).~~ *(Fixtures y Liguillas Completados en Dashboard)*
+  3. **[NUEVO FOCO SPRINT]** Asignación de Roles (Árbitros) y Desarrollo del Panel de Arbitraje en Cancha (Registro PWA Offline-first).
 - No implementar infraestructura o funcionalidades de fases futuras (Redis, Celery, IA, patrocinios) si la
   tarea actual corresponde a una fase anterior, salvo que el usuario lo pida explícitamente.
 - El MVP es (actualizado con `MVP_RetaT.pdf`): autenticación (con recuperar contraseña), gestión de
