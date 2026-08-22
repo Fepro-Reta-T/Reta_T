@@ -1,58 +1,43 @@
-# Propuesta de Próximo Sprint y Arquitectura: Panel de Arbitraje
+# Propuesta de Sprint Oficial: Árbitros, Mapas y Equipos
 
-Este documento establece los lineamientos técnicos y los objetivos para el siguiente ciclo de desarrollo de la plataforma Reta-T, conforme a las directrices de arquitectura del proyecto (AGENTS.md).
+Con base en la visión operativa del proyecto, el siguiente sprint técnico se ejecutará dividiendo la fuerza de trabajo en **tres ejes fundamentales**, asegurando que cada desarrollador (Dev) posea un área de responsabilidad clara que no colisione con el resto del equipo.
 
-## 1. Contexto y Estado Actual
+---
 
-Se ha consolidado exitosamente la gestión administrativa en `apps/web-next`. Actualmente, el sistema permite:
-* Inscribir equipos y estructurar ligas.
-* Generar fixtures (calendarios de partidos) automatizados.
-* Simular y visualizar el avance de torneos mediante Tablas de Posiciones y Brackets de Liguilla.
-* Gestionar relaciones de base de datos desde PostgreSQL a través de FastAPI.
+## 1. Distribución de Tareas por Desarrollador
 
-**Limitante actual:** La plataforma requiere el puente operativo hacia el personal en cancha para registrar eventos (goles, amonestaciones, asistencias) en tiempo real, considerando escenarios sin conexión a internet.
+### Desarrollador 1: El Panel de Arbitraje (PWA de Cancha)
+**Misión:** Construir la herramienta de campo que alimentará la plataforma con datos reales.
+* **Maquetado UI (Vite):** Crear pantallas de alto contraste y botones grandes para registrar goles, asistencias y tarjetas (apto para uso exterior).
+* **Motor Offline (IndexedDB):** Implementar la capacidad de registrar todos los eventos de un partido sin internet.
+* **Sincronización:** Desarrollar la pasarela que envía en lote (y de forma idempotente) el acta del partido hacia FastAPI en cuanto el dispositivo recupere conexión.
+* **Asignación de Partido (Apoyo):** Asegurar el mecanismo de login en la PWA para que el árbitro solo pueda visualizar y editar el partido que el Organizador le asignó.
 
-## 2. Objetivos del Nuevo Sprint
+### Desarrollador 2: Módulo de Canchas y Geocodificación (Google Maps)
+**Misión:** Profesionalizar la logística geográfica de los torneos.
+* **Integración Frontend (Next.js):** Incorporar un mapa interactivo (Google Maps API) en el formulario de registro de canchas para que el organizador coloque un pin exacto.
+* **Resolución Geográfica:** Capturar la latitud/longitud y traducirla al municipio correspondiente.
+* **🚨 Criterio Arquitectónico (AGENTS.md):** La consulta a la API externa (geocodificación) debe resolverse **100% asíncronamente en el frontend (Next.js)**. FastAPI solo debe recibir los datos limpios (coordenadas listas) para guardarlos, evitando bloquear los hilos del servidor de Python esperando a Google.
 
-El objetivo principal es construir el Panel de Arbitraje (PWA), permitiendo la captura de eventos de partido offline-first y la delegación de roles de encargado en cancha.
+### Desarrollador 3: Gestión Avanzada de Equipos y Roster
+**Misión:** Dar autonomía a los equipos y optimizar el rendimiento de la base de datos.
+* **Administración de Plantilla:** Interfaz en Next.js para editar el perfil del equipo, así como dar de alta (registrar) o de baja (quitar) jugadores del roster oficial.
+* **Analítica de Equipo:** Panel de estadísticas agregadas por equipo.
+* **Historial Optimizado:** Implementar un carrusel o lista de resultados que muestre **estrictamente los últimos 15 partidos jugados**. 
+* **🚨 Criterio Arquitectónico:** Las consultas a PostgreSQL (`torneo_repository.py`) deben incluir obligatoriamente la cláusula `.limit(15)` en el historial para evitar una sobrecarga de memoria cuando el torneo esté muy avanzado.
 
-### Hito 1: Parches de Seguridad (Next.js)
-Blindar el Dashboard administrativo mediante la restricción de acciones destructivas (ej. eliminación de equipos), asegurando que únicamente los roles `ORGANIZER` o `ADMIN` tengan acceso a estas interfaces mediante validaciones estáticas.
+---
 
-### Hito 2: Asignación de Encargados (Conexión Next.js y FastAPI)
-Establecer el flujo de delegación operativa:
-* Permitir al Organizador visualizar el Fixture y asignar un usuario (mediante enlace o selección) como `MATCH_MANAGER` de un partido específico.
-* Otorgar permisos condicionales de escritura al usuario asignado exclusivamente para el periodo de ese partido.
+## 2. Propuestas Adicionales (Para redondear el Sprint)
 
-### Hito 3: PWA de Arbitraje (Vite + React)
-Construir el núcleo de captura en `apps/registro-pwa` bajo una arquitectura estricta de "Captura Rápida Offline-First".
-* **Diseño Funcional:** Interfaz de alto contraste, botones de gran tamaño e interacciones mínimas para uso bajo estrés y luz solar directa.
-* **Modelo Genérico (MatchEvent):** Registrar cada evento a nivel de log (Sport -> EventType -> MatchEvent) sin mutar directamente marcadores agregados.
-* **Sincronización:** Guardar eventos en almacenamiento local (IndexedDB) durante el modo offline y despachar en lote hacia FastAPI al recuperar conectividad, utilizando validación de idempotencia en backend.
+Para que estas tres vías funcionen a la perfección sin generar huecos lógicos, propongo **dos requisitos transversales** que los desarrolladores deben tomar en cuenta al construir sus módulos:
 
-## 3. Distribución de Tareas (Para equipo de 3 Desarrolladores)
+1. **Permisos y Roles (Para el Dev 3):** Al habilitar que se puedan "editar equipos o quitar jugadores", es imperativo que el desarrollador implemente candados (validación de rol). Un jugador normal (`PLAYER`) no debería poder quitar a un compañero del equipo. Solo el "Capitán" (dueño del equipo) o el Organizador del torneo deben ver el botón de "Eliminar jugador".
+2. **El Enlace de Asignación (Para el Dev 2 o 1):** Como la PWA está aislada, necesitamos que el Organizador en Next.js presione un botón en el fixture que diga "Asignar Árbitro" e ingrese el correo del encargado. Esto es indispensable para que el Dev 1 sepa qué partido mostrar cuando el árbitro inicie sesión en su teléfono.
 
-El trabajo de este sprint se puede paralelizar de manera eficiente asignando responsabilidades específicas por dominio de aplicación:
+---
 
-### Desarrollador 1: Backend Core (FastAPI y PostgreSQL)
-Responsable de la lógica de negocio, bases de datos y sincronización.
-* **Seguridad:** Implementar los endpoints y dependencias de autorización (`require_role`) para restringir la eliminación de entidades.
-* **Asignación de Roles:** Crear los endpoints para asociar un `user_id` temporalmente como `match_manager_id` de un `Partido`.
-* **Motor de Sincronización:** Desarrollar el endpoint receptor del lote de eventos offline. Implementar la validación de idempotencia para ignorar duplicados por microcortes de red.
-
-### Desarrollador 2: Dashboard Administrativo (Next.js y UI)
-Responsable del portal principal y la experiencia de los organizadores.
-* **Refactorización de Roles UI:** Ocultar condicionalmente los botones y vistas destructivas (como borrar un equipo) basándose en los permisos del usuario activo.
-* **Interfaz de Delegación:** Desarrollar el flujo visual sobre el Fixture para que el organizador envíe enlaces mágicos o asigne directamente a los encargados de cancha de los partidos.
-* **Dependencias:** Utilizar e iterar sobre los componentes preexistentes en `packages/ui` y consumir los endpoints desarrollados por el Desarrollador 1 mediante `packages/api-client`.
-
-### Desarrollador 3: Motor Offline en Cancha (Registro PWA Vite)
-Responsable exclusivo de la experiencia de arbitraje y captura de datos en móviles.
-* **Maquetado UI:** Construir el cascarón visual de la pantalla activa de un partido (marcadores, botones de eventos) siguiendo la regla de minimalismo y alto contraste.
-* **Motor Local (IndexedDB):** Implementar la cola de eventos local y la persistencia de sesión del encargado en cancha sin conexión a red (apoyándose en la skill `pwa-offline-sync`).
-* **Capa de Envío:** Integrar un *service worker* o un listener de estado de red (`useSyncStore`) que despache automáticamente la cola de `MatchEvent` hacia el endpoint de sincronización cuando detecte conexión, eliminando la cola al recibir confirmación 200 OK.
-
-## 4. Directrices Arquitectónicas Críticas
-
-* **Responsabilidad Única por App:** Next.js configura y visualiza; la PWA registra en cancha de manera offline; FastAPI procesa y consolida.
-* **Reutilización:** Modelos y tipos TypeScript deben radicar estrictamente en `packages/types`. Las implementaciones de red deben consumir `packages/api-client`. Todo componente visual compartido debe extraerse a `packages/ui`.
+## 3. Directrices de Calidad del Equipo
+* Toda lógica compleja vive en **FastAPI**.
+* Todo componente visual reciclable se extrae a `packages/ui`.
+* **Zero Trust:** Nunca confíen en la validación del frontend. FastAPI debe volver a verificar que quien elimina a un jugador o registra una cancha realmente tiene el rol necesario.
