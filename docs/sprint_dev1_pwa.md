@@ -1,26 +1,27 @@
-# Sprint Plan - Dev 1: PWA de Arbitraje (Offline-First)
+# Sprint Plan - Desarrollador 1: Panel de Arbitraje (PWA)
 
-## 📌 Objetivo
-Construir la herramienta de campo para los encargados de partido. Esta aplicación web progresiva permitirá registrar goles y asistencias en tiempo real, guardando los datos en caché si no hay internet y sincronizándolos posteriormente.
+## 1. Objetivo Principal
+Construir la herramienta operativa para los encargados de partido en cancha. Esta aplicación web progresiva (PWA) debe permitir el registro de eventos de partido (goles, tarjetas rojas, asistencias) en tiempo real, priorizando el funcionamiento sin conexión a internet (Offline-First) mediante almacenamiento en caché local.
 
-## 🛠️ Archivos y Entornos Principales
-* **Frontend:** `apps/registro-pwa/` (React + Vite)
-* **Backend:** `backend/api/app/routers/partido.py` y `sync.py`
-* **Tipos Compartidos:** `packages/types/`
+## 2. Entorno de Desarrollo y Archivos Afectados
+- Frontend: Directorio apps/registro-pwa/ (React + Vite).
+- Backend Core: Modificación de backend/api/app/routers/partido.py y creación de rutas de sincronización en sync.py.
+- Ecosistema: Consumo de modelos en packages/types/.
 
-## 📋 Tareas Asignadas
-1. **Asignación de Encargados (Backend & Next.js):**
-   - Crear un endpoint en FastAPI para asignar un `match_manager_id` a un Partido existente.
-   - En el Dashboard (`web-next`), agregar un botón simple para que el Organizador copie un "Enlace Mágico" o asigne a un usuario a un partido.
+## 3. Desglose de Tareas Técnicas
 
-2. **UI de Captura (Registro PWA):**
-   - Construir una pantalla de Partido Activo minimalista: dos botones gigantes para cada equipo (Gol, Tarjeta Amarilla, Tarjeta Roja).
-   - Aplicar la regla de diseño: alto contraste, sin animaciones pesadas.
+### 3.1. Asignación de Encargados (Backend y Dashboard)
+- Endpoint de Asignación: Crear una ruta en FastAPI que permita vincular un match_manager_id (identificador de usuario) a un partido específico ya existente.
+- Flujo Visual (Next.js): Proveer a los usuarios con rol de Organizador una interfaz simplificada en el dashboard para asignar encargados a los partidos de su torneo, generando los permisos temporales necesarios.
 
-3. **Motor Offline y Sincronización:**
-   - **Local:** Cada vez que el árbitro presiona "Gol", guardarlo en la base de datos local del navegador (IndexedDB) usando la skill `pwa-offline-sync`.
-   - **Nube:** Crear un worker que, al recuperar el internet, tome todo el bloque de eventos de IndexedDB y lo dispare hacia el backend en un solo viaje (Batch payload).
+### 3.2. Interfaz de Captura en Cancha (Registro PWA)
+- Diseño Funcional: Desarrollar la pantalla del partido activo. La regla de arquitectura exige minimalismo extremo: controles de gran tamaño e interacción rápida, sin animaciones ni elementos que dificulten su uso bajo luz solar directa.
+- Modelo de Eventos: Asegurar que cada acción (ej. registrar un gol) se empaquete como un MatchEvent en memoria.
 
-## ⚠️ Puntos de Cuidado (Conflictos Potenciales)
-* **Idempotencia:** Asegúrate de que el backend valide el `id` local generado por la PWA. Si la red parpadea y la PWA envía el gol dos veces, el backend debe ignorar el duplicado.
-* **Aislamiento:** Tu trabajo casi no tocará Next.js, por lo que **no tendrás colisiones** con los Desarrolladores 2 y 3. Estás trabajando en una app paralela.
+### 3.3. Motor de Sincronización y Persistencia Local
+- Caché Offline: Implementar IndexedDB utilizando el módulo de sincronización (useSyncStore / skill pwa-offline-sync) para persistir los eventos localmente en el instante en que ocurren.
+- Sincronización en Lote (Batch Sync): Programar el flujo para que, al detectar la recuperación de conectividad de red, la PWA tome la cola entera de eventos locales y la despache al backend en una sola petición.
+
+## 4. Lineamientos y Prevención de Conflictos
+- Idempotencia Obligatoria: El endpoint receptor en FastAPI debe verificar identificadores únicos de cliente para cada evento. Esto previene la duplicación de datos (goles repetidos) si ocurren intermitencias de red durante el envío del lote.
+- Aislamiento de Trabajo: Su desarrollo reside primordialmente en la PWA y módulos backend aislados, asegurando nula fricción con los Desarrolladores 2 y 3.
