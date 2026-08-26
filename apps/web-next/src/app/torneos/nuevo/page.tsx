@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { apiClient } from "@/lib/api";
+import { apiClient, torneosApi, getAuthToken } from "@/lib/api";
 import AppLayout from "@/components/AppLayout";
 import WizardProgressBar from "./_components/WizardProgressBar";
 
@@ -103,6 +103,15 @@ export default function NuevoTorneoPage() {
         if (parsed.paso1) {
           setFormData((prev) => ({ ...prev, ...parsed.paso1 }));
         }
+        // AGREGADO: Si ya hay datos del paso 2/3/4, actualiza el estado actual
+        if (parsed.paso2 || parsed.paso3 || parsed.paso4) {
+          setFormData((prev) => ({
+            ...prev,
+            sport_id: prev.sport_id || parsed.paso2?.sport_id || "",
+            categoria: prev.categoria || parsed.paso3?.categoria || "",
+            imagen_portada: prev.imagen_portada || parsed.paso4?.imagen_portada || "/Futbol 7.jpg",
+          }));
+        }
       } catch {
         // borrador corrupto, ignorar
       }
@@ -181,7 +190,7 @@ export default function NuevoTorneoPage() {
     }
   }
 
-  function handleSiguiente(e: React.FormEvent) {
+  async function handleSiguiente(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
@@ -217,6 +226,30 @@ export default function NuevoTorneoPage() {
         },
       })
     );
+
+    // AGREGADO: Llamada al backend para crear el torneo de verdad
+    try {
+      // Verificar que el token esté puesto
+      const token = getAuthToken();
+      if (token) {
+        apiClient.setToken(token);
+      }
+      
+      await torneosApi.crear({
+        nombre: formData.nombre,
+        categoria: formData.categoria,
+        sport_id: formData.sport_id,
+        datos_adicionales: {
+          imagen_portada: formData.imagen_portada,
+          descripcion: formData.descripcion,
+        },
+      });
+    } catch (err) {
+      console.error("Error al crear el torneo:", err);
+      setError("No se pudo crear el torneo. Revisa que el backend esté corriendo o que estés logueado.");
+      return;
+    }
+
     router.push("/torneos/nuevo/formato");
   }
 
@@ -267,7 +300,7 @@ export default function NuevoTorneoPage() {
               alt="Vista previa de portada"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-6 sm:p-8">
+            <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-6 sm:p-8">
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="text-xs uppercase tracking-widest font-bold text-primary-light bg-primary/30 backdrop-blur-md px-3 py-1 rounded-full border border-primary/30">
                   Vista Previa
@@ -364,16 +397,15 @@ export default function NuevoTorneoPage() {
                     <textarea
                       value={formData.descripcion}
                       onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                      className="w-full bg-background border border-secondary rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[100px]"
+                      className="w-full bg-background border border-secondary rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-25"
                       placeholder="Escribe las reglas, premios, o detalles importantes del torneo..."
                     />
                   </div>
                   <div className="flex justify-end">
                     <button
                       type="button"
-                      disabled={!formData.nombre.trim()}
                       onClick={() => irAlPaso(2, step2Ref)}
-                      className="px-6 py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:bg-primary-light transition-colors disabled:opacity-50 text-sm"
+                      className="px-6 py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:bg-primary-light transition-colors text-sm"
                     >
                       Avanzar a Portada →
                     </button>
@@ -476,7 +508,7 @@ export default function NuevoTorneoPage() {
               )}
             </div>
 
-            {/* PASO 3: DEPORTE (Tarjetas Visuales Corregidas) */}
+            {/* PASO 3: DEPORTE */}
             <div
               ref={step3Ref}
               className="bg-card rounded-2xl border border-secondary overflow-hidden shadow-sm transition-all duration-300"
@@ -554,7 +586,7 @@ export default function NuevoTorneoPage() {
                               alt={sport.nombre}
                               className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                            <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent" />
 
                             <div className="relative z-10">
                               <span className="text-xs font-black uppercase text-white tracking-wider block drop-shadow">

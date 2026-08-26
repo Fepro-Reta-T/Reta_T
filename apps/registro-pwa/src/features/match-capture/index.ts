@@ -1,2 +1,2 @@
-// Pantalla principal de captura (cancha, goles, tarjetas)
-export {};
+export { default as MatchCaptureScreen } from './MatchCaptureScreen';
+export { useEventCapture } from './useEventCapture';
